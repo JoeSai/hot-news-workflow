@@ -31,7 +31,7 @@ interface HotspotCaptureNodeProps {
 }
 
 function HotspotCaptureNode({ id, data }: HotspotCaptureNodeProps) {
-  const { updateNodeData, setNews } = useWorkflowStore();
+  const { updateNodeData } = useWorkflowStore();
   const selectedPlatforms = data.platforms || ['wangyi', 'pengpai', 'tencent'];
   const limit = data.limit || 30;
 
@@ -52,8 +52,8 @@ function HotspotCaptureNode({ id, data }: HotspotCaptureNodeProps) {
     updateNodeData(id, { status: 'running' });
     try {
       const news = await parseHotNewsFile();
-      updateNodeData(id, { status: 'success', news });
-      setNews(news);
+      // 将数据存入自身节点，并声明输出类型
+      updateNodeData(id, { status: 'success', news, outputType: 'news' });
     } catch {
       updateNodeData(id, { status: 'error', error: '加载现有数据失败' });
     }
@@ -71,8 +71,8 @@ function HotspotCaptureNode({ id, data }: HotspotCaptureNodeProps) {
 
     try {
       const news = await runCrawler(selectedPlatforms, limit);
-      updateNodeData(id, { status: 'success', news });
-      setNews(news);
+      // 将数据存入自身节点，并声明输出类型
+      updateNodeData(id, { status: 'success', news, outputType: 'news' });
     } catch (error) {
       updateNodeData(id, {
         status: 'error',

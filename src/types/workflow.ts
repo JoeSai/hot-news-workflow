@@ -56,8 +56,18 @@ export interface WordCloudItem {
   value: number;
 }
 
+// 节点数据类型
+export type NodeDataType = 'news' | 'keywords' | 'wordcloud';
+
 // 节点运行时数据
 export interface NodeData extends Record<string, unknown> {
+  // 节点类型标识
+  nodeType?: 'source' | 'processor' | 'visualization';
+  // 输出数据类型
+  outputType?: NodeDataType;
+  // 输入数据类型需求
+  inputType?: NodeDataType | NodeDataType[];
+
   // 热点抓取节点
   platforms?: string[];
   limit?: number;
@@ -76,15 +86,6 @@ export interface NodeData extends Record<string, unknown> {
   wordCloudStatus?: 'idle' | 'running' | 'success' | 'error';
   wordCloudTopK?: number;
 
-  // 关系图谱节点
-  graphData?: GraphData;
-  graphStatus?: 'idle' | 'running' | 'success' | 'error';
-
-  // 时间线节点
-  timelineData?: TimelineItem[];
-  timelineStatus?: 'idle' | 'running' | 'success' | 'error';
-
-  // 力导向图节点
-  forceGraphData?: GraphData;
-  forceGraphStatus?: 'idle' | 'running' | 'success' | 'error';
+  // 热点详情节点
+  newsDetailStatus?: 'idle' | 'running' | 'success' | 'error';
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { useWorkflowStore } from '../../hooks/useWorkflowStore';
-import type { NodeData, Keyword, NewsItem } from '../../types/workflow';
+import { useWorkflowStore, getInputData } from '../../hooks/useWorkflowStore';
+import type { NodeData, Keyword } from '../../types/workflow';
 
 interface WordCloudNodeProps {
   id: string;
@@ -78,78 +78,52 @@ function renderWordCloud(
 
 function WordCloudNode({ id, data }: WordCloudNodeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { updateNodeData, news, keywords } = useWorkflowStore();
+  const { nodes, edges, updateNodeData } = useWorkflowStore();
 
-  // 从关键词或新闻生成词云数据
+  // 从连线获取输入数据（从关键词提取节点传来）
+  const inputKeywords = useMemo(() => {
+    const keywords = getInputData<Keyword>(id, nodes, edges, 'keywords');
+    return keywords || [];
+  }, [id, nodes, edges]);
+
+  // 词云数据
   const wordCloudData = useMemo(() => {
-    // 如果有 keywords，直接使用
-    if (keywords && keywords.length > 0) {
-      return keywords.map((k: Keyword) => ({
+    if (inputKeywords.length > 0) {
+      return inputKeywords.slice(0, (data.wordCloudTopK as number) || 50).map((k) => ({
         text: k.word,
         value: k.weight,
       }));
     }
-
-    // 否则从新闻标题生成
-    if (!news || news.length === 0) return [];
-
-    // 简单分词（按空格和标点分割）
-    const wordCount: Record<string, number> = {};
-    const stopWords = new Set([
-      '的', '了', '是', '在', '和', '与', '或', '为', '对', '这', '那', '就', '都',
-      '也', '要', '会', '能', '可以', '一个', '我们', '你们', '他们', '什么', '这个',
-      '那个', '因为', '所以', '但是', '如果', '虽然', '已经', '正在', '可能',
-    ]);
-
-    news.forEach((item: NewsItem) => {
-      const words = item.title.split(/[\s,\.，。、！？；：""''【】（）]/);
-      words.forEach((word: string) => {
-        word = word.trim();
-        if (word.length >= 2 && !stopWords.has(word)) {
-          wordCount[word] = (wordCount[word] || 0) + 1;
-        }
-      });
-    });
-
-    return Object.entries(wordCount)
-      .map(([text, value]) => ({ text, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, (data.wordCloudTopK as number) || 50);
-  }, [keywords, news, data.wordCloudTopK]);
+    return [];
+  }, [inputKeywords, data.wordCloudTopK]);
 
   // 渲染词云
   useEffect(() => {
-    if (!canvasRef.current || wordCloudData.length === 0) return;
+    if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
     canvas.width = 400;
     canvas.height = 300;
 
-    // 转换为 Keyword 格式
-    const keywordsForRender: Keyword[] = wordCloudData.map((item) => ({
-      word: item.text,
-      weight: item.value,
-    }));
-
-    renderWordCloud(canvas, keywordsForRender, (data.wordCloudTopK as number) || 50);
-  }, [wordCloudData, data.wordCloudTopK]);
+    if (wordCloudData.length > 0) {
+      const keywordsForRender: Keyword[] = wordCloudData.map((item) => ({
+        word: item.text,
+        weight: item.value,
+      }));
+      renderWordCloud(canvas, keywordsForRender, (data.wordCloudTopK as number) || 50);
+      updateNodeData(id, { wordCloudStatus: 'success' });
+    } else {
+      // 清空画布
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }, [wordCloudData, data.wordCloudTopK, id, updateNodeData]);
 
   const handleTopKChange = (newTopK: number) => {
     updateNodeData(id, { wordCloudTopK: newTopK });
   };
 
-  const getStatusColor = () => {
-    switch (data.wordCloudStatus) {
-      case 'running':
-        return 'text-blue-600';
-      case 'success':
-        return 'text-green-600';
-      case 'error':
-        return 'text-red-600';
-      default:
-        return 'text-gray-500';
-    }
-  };
+  const hasInput = inputKeywords.length > 0;
 
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-200 w-96">
@@ -193,17 +167,21 @@ function WordCloudNode({ id, data }: WordCloudNodeProps) {
               <div className="text-center">
                 <div className="text-4xl mb-2">☁️</div>
                 <div className="text-sm">暂无数据</div>
-                <div className="text-xs mt-1">请先连接热点抓取节点</div>
+                <div className="text-xs mt-1">
+                  {hasInput ? '请先提取关键词' : '← 请连接关键词提取节点'}
+                </div>
               </div>
             </div>
           )}
         </div>
 
         {/* 状态 */}
-        <div className={`text-sm ${getStatusColor()}`}>
-          {wordCloudData.length > 0
-            ? `已渲染 ${wordCloudData.length} 个词`
-            : '等待数据...'}
+        <div className="text-sm text-gray-500">
+          {hasInput
+            ? wordCloudData.length > 0
+              ? `已渲染 ${wordCloudData.length} 个词`
+              : '等待关键词...'
+            : '等待数据输入'}
         </div>
 
         {/* 热词列表预览 */}
@@ -211,7 +189,7 @@ function WordCloudNode({ id, data }: WordCloudNodeProps) {
           <div>
             <div className="text-xs text-gray-500 mb-1">热词预览:</div>
             <div className="flex flex-wrap gap-1">
-              {wordCloudData.slice(0, 15).map((item: { text: string; value: number }, i: number) => (
+              {wordCloudData.slice(0, 15).map((item, i) => (
                 <span
                   key={i}
                   className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs"

@@ -1,18 +1,22 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { useWorkflowStore } from '../../hooks/useWorkflowStore';
-import type { NodeData } from '../../types/workflow';
+import { useWorkflowStore, getInputData } from '../../hooks/useWorkflowStore';
+import type { NodeData, NewsItem } from '../../types/workflow';
 
 interface NewsDetailNodeProps {
   id: string;
   data: NodeData;
 }
 
-function NewsDetailNode({ data }: NewsDetailNodeProps) {
-  const { news } = useWorkflowStore();
+function NewsDetailNode({ id }: NewsDetailNodeProps) {
+  const { nodes, edges } = useWorkflowStore();
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const newsList = data.news || news || [];
+  // 从连线获取输入数据（从热点抓取节点传来）
+  const newsList = useMemo(() => {
+    const news = getInputData<NewsItem>(id, nodes, edges, 'news');
+    return news || [];
+  }, [id, nodes, edges]);
 
   const currentNews = newsList[currentIndex];
 
@@ -62,7 +66,7 @@ function NewsDetailNode({ data }: NewsDetailNodeProps) {
         <div className="p-8 text-center text-gray-400">
           <div className="text-4xl mb-2">📰</div>
           <div className="text-sm">暂无新闻数据</div>
-          <div className="text-xs mt-1">连接热点抓取节点获取数据</div>
+          <div className="text-xs mt-1">← 请连接热点抓取节点</div>
         </div>
       </div>
     );

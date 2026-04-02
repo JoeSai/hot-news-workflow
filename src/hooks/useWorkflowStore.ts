@@ -1,14 +1,68 @@
 import { create } from 'zustand';
 import { applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
-import type { NodeData, NewsItem, GraphData, Keyword } from '../types/workflow';
+import type { NodeData, NewsItem, Keyword, NodeDataType } from '../types/workflow';
+
+/**
+ * 根据节点类型获取数据
+ */
+export function getNodeOutputData(node: Node): NodeDataType[] {
+  const data = node.data as NodeData;
+
+  if (data.outputType === 'news') return ['news'];
+  if (data.outputType === 'keywords') return ['keywords'];
+  if (data.outputType === 'wordcloud') return ['wordcloud'];
+
+  // 兼容旧逻辑：根据 node type 判断
+  if (node.type === 'hotspotCapture' && data.news?.length) return ['news'];
+  if (node.type === 'keywordExtract' && data.keywords?.length) return ['keywords'];
+
+  return [];
+}
+
+/**
+ * 获取节点接收到的输入数据
+ * @param nodeId 当前节点ID
+ * @param nodes 所有节点
+ * @param edges 所有边
+ * @param inputType 需要的数据类型
+ * @returns 输入数据或undefined
+ */
+export function getInputData<T extends NewsItem | Keyword>(
+  nodeId: string,
+  nodes: Node[],
+  edges: Edge[],
+  inputType: NodeDataType
+): T[] | undefined {
+  // 找到所有连接到当前节点的边（当前节点是target）
+  const incomingEdges = edges.filter(e => e.target === nodeId);
+
+  if (incomingEdges.length === 0) return undefined;
+
+  // 获取源节点
+  for (const edge of incomingEdges) {
+    const sourceNode = nodes.find(n => n.id === edge.source);
+    if (!sourceNode) continue;
+
+    const sourceData = sourceNode.data as NodeData;
+
+    // 根据需求的数据类型返回对应数据
+    if (inputType === 'news' && sourceData.news?.length) {
+      return sourceData.news as T[];
+    }
+    if (inputType === 'keywords' && sourceData.keywords?.length) {
+      return sourceData.keywords as T[];
+    }
+  }
+
+  return undefined;
+}
 
 interface WorkflowState {
   nodes: Node[];
   edges: Edge[];
   news: NewsItem[];
   keywords: Keyword[];
-  graphData: GraphData | null;
 
   // Actions
   setNodes: (nodes: Node[]) => void;
@@ -17,7 +71,6 @@ interface WorkflowState {
   updateNodeData: (nodeId: string, data: Partial<NodeData>) => void;
   setNews: (news: NewsItem[]) => void;
   setKeywords: (keywords: Keyword[]) => void;
-  setGraphData: (data: GraphData) => void;
   onNodesChange: (changes: any) => void;
   onEdgesChange: (changes: any) => void;
   onConnect: (connection: any) => void;
@@ -28,7 +81,6 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
   edges: [],
   news: [],
   keywords: [],
-  graphData: null,
 
   setNodes: (nodes) => set({ nodes }),
   setEdges: (edges) => set({ edges }),
@@ -37,20 +89,16 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
     nodes: [...state.nodes, node]
   })),
 
-  updateNodeData: (nodeId, data) => set((state) => {
-    console.log('updateNodeData called, nodeId:', nodeId, 'data keys:', Object.keys(data), 'current nodes count:', state.nodes.length);
-    return {
-      nodes: state.nodes.map((node) =>
-        node.id === nodeId
-          ? { ...node, data: { ...node.data, ...data } }
-          : node
-      )
-    };
-  }),
+  updateNodeData: (nodeId, data) => set((state) => ({
+    nodes: state.nodes.map((node) =>
+      node.id === nodeId
+        ? { ...node, data: { ...node.data, ...data } }
+        : node
+    )
+  })),
 
   setNews: (news) => set({ news }),
   setKeywords: (keywords) => set({ keywords }),
-  setGraphData: (graphData) => set({ graphData }),
 
   onNodesChange: (changes) => set((state) => ({
     nodes: applyNodeChanges(changes, state.nodes)

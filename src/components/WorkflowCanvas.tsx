@@ -13,18 +13,12 @@ import { useWorkflowStore } from '../hooks/useWorkflowStore';
 import HotspotCaptureNode from './nodes/HotspotCaptureNode';
 import KeywordExtractNode from './nodes/KeywordExtractNode';
 import WordCloudNode from './nodes/WordCloudNode';
-import GraphNode from './nodes/GraphNode';
-import TimelineNode from './nodes/TimelineNode';
-import ForceGraphNode from './nodes/ForceGraphNode';
 import NewsDetailNode from './nodes/NewsDetailNode';
 
 const nodeTypes = {
   hotspotCapture: HotspotCaptureNode,
   keywordExtract: KeywordExtractNode,
   wordCloud: WordCloudNode,
-  graph: GraphNode,
-  timeline: TimelineNode,
-  forceGraph: ForceGraphNode,
   newsDetail: NewsDetailNode,
 };
 
@@ -75,42 +69,6 @@ function WorkflowCanvas() {
     addNode(newNode);
   }, [addNode]);
 
-  const addGraphNode = useCallback(() => {
-    const newNode = {
-      id: `graph-${nodeIdCounter++}`,
-      type: 'graph',
-      position: { x: 750, y: 250 },
-      data: {
-        graphStatus: 'idle',
-      },
-    };
-    addNode(newNode);
-  }, [addNode]);
-
-  const addTimelineNode = useCallback(() => {
-    const newNode = {
-      id: `timeline-${nodeIdCounter++}`,
-      type: 'timeline',
-      position: { x: 750, y: 450 },
-      data: {
-        timelineStatus: 'idle',
-      },
-    };
-    addNode(newNode);
-  }, [addNode]);
-
-  const addForceGraphNode = useCallback(() => {
-    const newNode = {
-      id: `forcegraph-${nodeIdCounter++}`,
-      type: 'forceGraph',
-      position: { x: 750, y: 650 },
-      data: {
-        forceGraphStatus: 'idle',
-      },
-    };
-    addNode(newNode);
-  }, [addNode]);
-
   const addNewsDetailNode = useCallback(() => {
     const newNode = {
       id: `newsdetail-${nodeIdCounter++}`,
@@ -145,12 +103,8 @@ function WorkflowCanvas() {
                 return '#f97316';
               case 'wordCloud':
                 return '#0891b2';
-              case 'graph':
-                return '#6366f1';
-              case 'timeline':
-                return '#10b981';
-              case 'forceGraph':
-                return '#f59e0b';
+              case 'newsDetail':
+                return '#f43f5e';
               default:
                 return '#888';
             }
@@ -191,30 +145,6 @@ function WorkflowCanvas() {
             </button>
             <button
               type="button"
-              onClick={addGraphNode}
-              className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors"
-            >
-              <span>🔗</span>
-              <span>关系图谱</span>
-            </button>
-            <button
-              type="button"
-              onClick={addTimelineNode}
-              className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
-            >
-              <span>📅</span>
-              <span>时间线视图</span>
-            </button>
-            <button
-              type="button"
-              onClick={addForceGraphNode}
-              className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-amber-50 hover:bg-amber-100 rounded-md transition-colors"
-            >
-              <span>🌀</span>
-              <span>力导向图</span>
-            </button>
-            <button
-              type="button"
               onClick={addNewsDetailNode}
               className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-rose-50 hover:bg-rose-100 rounded-md transition-colors"
             >
@@ -228,10 +158,10 @@ function WorkflowCanvas() {
         <Panel position="top-right" className="bg-white rounded-lg shadow-lg p-3 text-sm">
           <div className="font-medium text-gray-700 mb-1">📖 使用说明</div>
           <ul className="text-xs text-gray-500 space-y-1">
-            <li>1. 添加「热点抓取」节点，抓取新闻</li>
-            <li>2. 添加「关键词提取」节点，提取热词</li>
-            <li>3. 添加可视化节点（词云/图谱等）</li>
-            <li>4. 连接节点，数据自动流转</li>
+            <li>1. 添加「热点抓取」抓取新闻</li>
+            <li>2. 连接节点拖拽数据</li>
+            <li>3. 添加「关键词提取」生成热词</li>
+            <li>4. 连接热词到「词云」可视化</li>
           </ul>
         </Panel>
       </ReactFlow>
