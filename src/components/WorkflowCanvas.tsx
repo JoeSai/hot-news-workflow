@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -22,15 +22,25 @@ const nodeTypes = {
   newsDetail: NewsDetailNode,
 };
 
-let nodeIdCounter = 1;
-
 function WorkflowCanvas() {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode } =
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, clearWorkflow } =
     useWorkflowStore();
+
+  // 计算下一个可用的节点ID，基于已有节点的最大ID
+  const getNextNodeId = (prefix: string) => {
+    const existingIds = nodes
+      .filter(n => n.id.startsWith(prefix))
+      .map(n => {
+        const match = n.id.match(/(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      });
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    return `${prefix}-${maxId + 1}`;
+  };
 
   const addHotspotCaptureNode = useCallback(() => {
     const newNode = {
-      id: `hotspot-${nodeIdCounter++}`,
+      id: getNextNodeId('hotspot'),
       type: 'hotspotCapture',
       position: { x: 50, y: 150 },
       data: {
@@ -44,7 +54,7 @@ function WorkflowCanvas() {
 
   const addKeywordExtractNode = useCallback(() => {
     const newNode = {
-      id: `keyword-${nodeIdCounter++}`,
+      id: getNextNodeId('keyword'),
       type: 'keywordExtract',
       position: { x: 400, y: 150 },
       data: {
@@ -58,7 +68,7 @@ function WorkflowCanvas() {
 
   const addWordCloudNode = useCallback(() => {
     const newNode = {
-      id: `wordcloud-${nodeIdCounter++}`,
+      id: getNextNodeId('wordcloud'),
       type: 'wordCloud',
       position: { x: 750, y: 50 },
       data: {
@@ -71,7 +81,7 @@ function WorkflowCanvas() {
 
   const addNewsDetailNode = useCallback(() => {
     const newNode = {
-      id: `newsdetail-${nodeIdCounter++}`,
+      id: getNextNodeId('newsdetail'),
       type: 'newsDetail',
       position: { x: 750, y: 850 },
       data: {
@@ -152,6 +162,25 @@ function WorkflowCanvas() {
               <span>热点详情</span>
             </button>
           </div>
+
+          {/* 分隔线和清除按钮 */}
+          {nodes.length > 0 && (
+            <>
+              <div className="border-t border-gray-200 my-2" />
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('确定要清除所有节点吗？此操作不可撤销。')) {
+                    clearWorkflow();
+                  }
+                }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              >
+                <span>🗑️</span>
+                <span>清除工作流</span>
+              </button>
+            </>
+          )}
         </Panel>
 
         {/* Top Right - Instructions */}

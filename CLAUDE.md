@@ -5,6 +5,7 @@
 ## 技术栈
 
 - **前端**: React 19 + TypeScript + Vite + TailwindCSS
+- **自动存储**: localStorage 自动保存工作流，刷新页面不丢失
 - **可视化**: React Flow (@xyflow/react) - ComfyUI 风格工作流编辑器
 - **状态管理**: Zustand
 - **后端**: Python FastAPI + jieba (关键词提取)
@@ -80,6 +81,11 @@ interface Keyword {
   weight: number;
 }
 ```
+
+## 工作流自动存储
+
+工作流节点和连线自动保存到浏览器 localStorage，刷新页面后自动恢复。
+如需清除，请点击左侧面板的「清除工作流」按钮。
 
 ## 开发命令
 

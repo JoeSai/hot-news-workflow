@@ -3,6 +3,34 @@ import { applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import type { NodeData, NewsItem, Keyword, NodeDataType } from '../types/workflow';
 
+const STORAGE_KEY = 'hot-news-workflow';
+
+// 从 localStorage 加载保存的工作流
+function loadWorkflow(): { nodes: Node[]; edges: Edge[] } {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // 确保返回有效的结构
+      if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
+        return { nodes: parsed.nodes, edges: parsed.edges };
+      }
+    }
+  } catch (e) {
+    console.warn('加载工作流失败:', e);
+  }
+  return { nodes: [], edges: [] };
+}
+
+// 保存工作流到 localStorage
+function saveWorkflow(nodes: Node[], edges: Edge[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ nodes, edges }));
+  } catch (e) {
+    console.warn('保存工作流失败:', e);
+  }
+}
+
 /**
  * 根据节点类型获取数据
  */
@@ -74,41 +102,65 @@ interface WorkflowState {
   onNodesChange: (changes: any) => void;
   onEdgesChange: (changes: any) => void;
   onConnect: (connection: any) => void;
+  clearWorkflow: () => void;
 }
 
-export const useWorkflowStore = create<WorkflowState>((set) => ({
-  nodes: [],
-  edges: [],
+const savedWorkflow = loadWorkflow();
+
+export const useWorkflowStore = create<WorkflowState>((set, get) => ({
+  nodes: savedWorkflow.nodes,
+  edges: savedWorkflow.edges,
   news: [],
   keywords: [],
 
-  setNodes: (nodes) => set({ nodes }),
-  setEdges: (edges) => set({ edges }),
+  setNodes: (nodes) => {
+    set({ nodes });
+    saveWorkflow(nodes, get().edges);
+  },
+  setEdges: (edges) => {
+    set({ edges });
+    saveWorkflow(get().nodes, edges);
+  },
 
-  addNode: (node) => set((state) => ({
-    nodes: [...state.nodes, node]
-  })),
+  addNode: (node) => set((state) => {
+    const newNodes = [...state.nodes, node];
+    saveWorkflow(newNodes, state.edges);
+    return { nodes: newNodes };
+  }),
 
-  updateNodeData: (nodeId, data) => set((state) => ({
-    nodes: state.nodes.map((node) =>
+  updateNodeData: (nodeId, data) => set((state) => {
+    const newNodes = state.nodes.map((node) =>
       node.id === nodeId
         ? { ...node, data: { ...node.data, ...data } }
         : node
-    )
-  })),
+    );
+    saveWorkflow(newNodes, state.edges);
+    return { nodes: newNodes };
+  }),
 
   setNews: (news) => set({ news }),
   setKeywords: (keywords) => set({ keywords }),
 
-  onNodesChange: (changes) => set((state) => ({
-    nodes: applyNodeChanges(changes, state.nodes)
-  })),
+  onNodesChange: (changes) => set((state) => {
+    const newNodes = applyNodeChanges(changes, state.nodes);
+    saveWorkflow(newNodes, state.edges);
+    return { nodes: newNodes };
+  }),
 
-  onEdgesChange: (changes) => set((state) => ({
-    edges: applyEdgeChanges(changes, state.edges)
-  })),
+  onEdgesChange: (changes) => set((state) => {
+    const newEdges = applyEdgeChanges(changes, state.edges);
+    saveWorkflow(state.nodes, newEdges);
+    return { edges: newEdges };
+  }),
 
-  onConnect: (connection) => set((state) => ({
-    edges: addEdge(connection, state.edges)
-  })),
+  onConnect: (connection) => set((state) => {
+    const newEdges = addEdge(connection, state.edges);
+    saveWorkflow(state.nodes, newEdges);
+    return { edges: newEdges };
+  }),
+
+  clearWorkflow: () => {
+    localStorage.removeItem(STORAGE_KEY);
+    set({ nodes: [], edges: [] });
+  },
 }));
