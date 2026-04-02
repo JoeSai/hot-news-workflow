@@ -1,41 +1,74 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-热点新闻爬虫 - 整合版 v2
-整合网易、澎湃、腾讯、搜狐、IT之家、新浪、中国日报、微博、知乎、百家号等
+热点新闻爬虫 - 整合版 v3
+整合网易、澎湃、腾讯、搜狐、IT之家、新浪、中国日报、微博、知乎等
 支持新闻列表抓取和文章详情抓取
+新增防封策略：随机UA、请求间隔、退避重试
 """
 import asyncio
 import json
 import re
 import time
 import ast
+import random
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 from urllib.parse import urlparse, parse_qs, quote
 from collections import Counter
-import random
 
 import requests
 from lxml import etree
 
 
+# User-Agent 轮换池
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+]
+
+# 随机延迟范围（秒）
+MIN_DELAY = 2
+MAX_DELAY = 5
+
+
+def random_delay():
+    """随机延迟，避免被识别为爬虫"""
+    delay = random.uniform(MIN_DELAY, MAX_DELAY)
+    time.sleep(delay)
+
+
+def get_random_ua():
+    """获取随机 User-Agent"""
+    return random.choice(USER_AGENTS)
+
+
 class BaseSpider:
     """爬虫基类"""
     source_name = "Unknown"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-    }
+
+    def __init__(self):
+        self.headers = {
+            "User-Agent": get_random_ua(),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+        }
 
     def request(self, method="GET", url=None, params=None, data=None, json=None, timeout=15, retry=3, headers=None):
-        """同步请求（带重试）"""
+        """同步请求（带重试和退避）"""
         request_headers = headers or self.headers
         for attempt in range(retry):
             try:
+                # 每次请求使用不同的 User-Agent
+                request_headers = {**request_headers, "User-Agent": get_random_ua()}
+
                 response = requests.request(
                     method=method,
                     url=url,
@@ -45,12 +78,24 @@ class BaseSpider:
                     json=json,
                     timeout=timeout,
                 )
+
+                # 429 Too Many Requests 或 5xx 错误时退避
+                if response.status_code == 429:
+                    wait_time = (attempt + 1) * 10  # 10, 20, 30 秒
+                    print(f"  请求过于频繁，等待 {wait_time} 秒...")
+                    time.sleep(wait_time)
+                    continue
+
                 response.raise_for_status()
                 return response
+
             except Exception as e:
                 if attempt == retry - 1:
                     raise e
-                time.sleep(0.5 * (attempt + 1))
+                # 指数退避：2, 4, 8 秒
+                backoff = 2 ** (attempt + 1)
+                print(f"  请求失败，{backoff} 秒后重试...")
+                time.sleep(backoff)
 
     def extract_article_content(self, html: etree._Element, xpath_rules: Dict) -> Tuple[str, List[str]]:
         """通用文章内容提取
@@ -1101,7 +1146,7 @@ def is_less_than_user_minutes(datetime_str: str, minutes: int = 30) -> bool:
 
 
 async def crawl_all(platforms: List[str], limit: int = 20) -> List[Dict]:
-    """爬取所有平台的新闻"""
+    """爬取所有平台的新闻（带防封策略）"""
     all_news = []
 
     for platform in platforms:
@@ -1112,7 +1157,8 @@ async def crawl_all(platforms: List[str], limit: int = 20) -> List[Dict]:
                 news = spider.get_news_list(limit)
                 print(f"  获取到 {len(news)} 条新闻")
                 all_news.extend(news)
-                time.sleep(0.5)
+                # 平台间随机延迟，避免请求过于频繁
+                random_delay()
             except Exception as e:
                 print(f"  {platform} 爬取失败: {e}")
         else:
