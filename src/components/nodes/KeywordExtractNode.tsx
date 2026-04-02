@@ -14,7 +14,9 @@ function KeywordExtractNode({ id, data }: KeywordExtractNodeProps) {
   const [topK, setTopK] = useState(data.topK || 50);
   const [method, setMethod] = useState<'tfidf' | 'textrank'>(data.method || 'tfidf');
 
-  const handleExtract = async () => {
+  const handleExtract = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!news || news.length === 0) {
       updateNodeData(id, { keywordStatus: 'error' });
       return;
@@ -98,6 +100,7 @@ function KeywordExtractNode({ id, data }: KeywordExtractNodeProps) {
 
         {/* 提取按钮 */}
         <button
+          type="button"
           onClick={handleExtract}
           disabled={data.keywordStatus === 'running' || news.length === 0}
           className={`w-full py-2 px-4 rounded-md font-medium text-white transition-colors

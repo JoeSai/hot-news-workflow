@@ -5,6 +5,7 @@ Hot News Workflow - FastAPI 后端服务
 import subprocess
 import re
 import json
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, List
@@ -28,6 +29,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 数据目录 - 支持 macOS/Linux
+DATA_DIR = Path(__file__).parent.parent / "data"
+SPIDER_DIR = Path(os.environ.get("HOT_NEWS_SPIDER_DIR", str(DATA_DIR)))
+
+# 确保数据目录存在
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_FILE = DATA_DIR / "hot_news.txt"
+
 # 热点新闻项
 class NewsItem(BaseModel):
     title: str
@@ -40,6 +49,7 @@ class NewsItem(BaseModel):
 
 class CrawlRequest(BaseModel):
     platforms: List[str] = ["wangyi", "pengpai", "tencent"]
+    limit: int = 30
 
 def parse_hot_news_file(filepath: str) -> List[NewsItem]:
     """解析 hot_news.txt 文件，提取新闻数据"""
@@ -103,45 +113,42 @@ def parse_hot_news_file(filepath: str) -> List[NewsItem]:
 async def run_crawler(request: CrawlRequest):
     """
     运行热点抓取爬虫
-    调用现有的 hot_news_spider/run.py
+    使用真实新闻源抓取
     """
-    # 爬虫项目路径 - 使用绝对路径
-    SPIDER_DIR = Path(r"C:\Users\admin\Desktop\hot_news_spider")
-    spider_path = SPIDER_DIR / "run.py"
-    output_path = SPIDER_DIR / "hot_news.txt"
+    try:
+        from server.spider import crawl_all
 
-    # 确保路径存在
-    if not spider_path.exists():
-        return {
-            "success": False,
-            "error": f"爬虫文件不存在: {spider_path}",
-            "news": []
+        # 映射平台名称
+        platform_map = {
+            "wangyi": "wangyi",
+            "pengpai": "pengpai",
+            "tencent": "tencent"
         }
 
-    try:
-        # 运行爬虫
-        result = subprocess.run(
-            ["python", str(spider_path)],
-            capture_output=True,
-            text=True,
-            timeout=60,
-            cwd=str(spider_path.parent)
-        )
+        platforms = [platform_map.get(p, p) for p in request.platforms]
 
-        # 解析输出文件
-        news = parse_hot_news_file(str(output_path))
+        # 抓取新闻
+        news_data = await crawl_all(platforms, limit=request.limit)
+
+        # 保存到文件
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+            for i, news in enumerate(news_data, 1):
+                f.write(f"[{i}] {news['source']} - {news['channel']} - {news['category']}\n")
+                f.write(f"标题: {news['title']}\n")
+                f.write(f"时间: {news['pub_time']}\n")
+                f.write(f"链接: {news['url']}\n")
+                f.write(f"图片: {news['img_url']}\n")
+                f.write("---\n")
+
+        # 转换为NewsItem格式
+        news_items = [NewsItem(**n) for n in news_data]
 
         return {
             "success": True,
-            "news": [item.model_dump() for item in news],
-            "count": len(news),
-            "stdout": result.stdout[-500:] if result.stdout else "",
-        }
-    except subprocess.TimeoutExpired:
-        return {
-            "success": False,
-            "error": "爬虫运行超时",
-            "news": []
+            "news": [item.model_dump() for item in news_items],
+            "count": len(news_items),
+            "stdout": f"成功抓取 {len(news_items)} 条新闻",
         }
     except Exception as e:
         return {
@@ -151,15 +158,57 @@ async def run_crawler(request: CrawlRequest):
         }
 
 
+async def generate_sample_data():
+    """生成示例热点新闻数据（当爬虫不可用时）"""
+    sample_news = [
+        NewsItem(title="人工智能在医疗领域取得重大突破", url="https://example.com/news/1", img_url="", pub_time="2026-04-02", source="网易", category="科技", channel="热点"),
+        NewsItem(title="全球芯片短缺问题持续缓解，新能源汽车受影响", url="https://example.com/news/2", img_url="", pub_time="2026-04-02", source="澎湃", category="财经", channel="热点"),
+        NewsItem(title="新能源汽车销量再创新高，国产崛起", url="https://example.com/news/3", img_url="", pub_time="2026-04-02", source="腾讯", category="汽车", channel="热点"),
+        NewsItem(title="量子计算技术进入实用化阶段，科技新突破", url="https://example.com/news/4", img_url="", pub_time="2026-04-02", source="网易", category="科技", channel="热点"),
+        NewsItem(title="国际油价波动对全球经济影响深远", url="https://example.com/news/5", img_url="", pub_time="2026-04-02", source="澎湃", category="财经", channel="热点"),
+        NewsItem(title="电商平台推出新政策，扶持中小企业发展", url="https://example.com/news/6", img_url="", pub_time="2026-04-02", source="网易", category="财经", channel="热点"),
+        NewsItem(title="5G网络覆盖全国，智慧城市建设加速", url="https://example.com/news/7", img_url="", pub_time="2026-04-02", source="腾讯", category="科技", channel="热点"),
+        NewsItem(title="房地产市场调控政策效果显现", url="https://example.com/news/8", img_url="", pub_time="2026-04-02", source="澎湃", category="房产", channel="热点"),
+        NewsItem(title="国产芯片技术突破，打破国外垄断", url="https://example.com/news/9", img_url="", pub_time="2026-04-02", source="网易", category="科技", channel="热点"),
+        NewsItem(title="跨境电商新机遇，数字化贸易成趋势", url="https://example.com/news/10", img_url="", pub_time="2026-04-02", source="腾讯", category="财经", channel="热点"),
+        NewsItem(title="人工智能技术在教育领域广泛应用", url="https://example.com/news/11", img_url="", pub_time="2026-04-02", source="澎湃", category="教育", channel="热点"),
+        NewsItem(title="碳中和目标推动新能源产业快速发展", url="https://example.com/news/12", img_url="", pub_time="2026-04-02", source="网易", category="能源", channel="热点"),
+        NewsItem(title="元宇宙概念持续火热，科技巨头纷纷布局", url="https://example.com/news/13", img_url="", pub_time="2026-04-02", source="腾讯", category="科技", channel="热点"),
+        NewsItem(title="生物医药创新成果频出，健康产业迎新机遇", url="https://example.com/news/14", img_url="", pub_time="2026-04-02", source="澎湃", category="医疗", channel="热点"),
+        NewsItem(title="数字货币试点扩大，支付方式变革加速", url="https://example.com/news/15", img_url="", pub_time="2026-04-02", source="网易", category="金融", channel="热点"),
+        NewsItem(title="智能制造推动工业升级，传统产业转型", url="https://example.com/news/16", img_url="", pub_time="2026-04-02", source="腾讯", category="工业", channel="热点"),
+        NewsItem(title="碳达峰碳中和成为国家重点战略", url="https://example.com/news/17", img_url="", pub_time="2026-04-02", source="澎湃", category="环保", channel="热点"),
+        NewsItem(title="自动驾驶技术成熟，智能汽车新时代来临", url="https://example.com/news/18", img_url="", pub_time="2026-04-02", source="网易", category="汽车", channel="热点"),
+        NewsItem(title="云计算市场快速增长，企业数字化转型加速", url="https://example.com/news/19", img_url="", pub_time="2026-04-02", source="腾讯", category="科技", channel="热点"),
+        NewsItem(title="直播电商成为新零售重要模式", url="https://example.com/news/20", img_url="", pub_time="2026-04-02", source="澎湃", category="电商", channel="热点"),
+    ]
+
+    # 保存到数据文件
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        for i, news in enumerate(sample_news, 1):
+            f.write(f"[{i}] {news.source} - {news.channel} - {news.category}\n")
+            f.write(f"标题: {news.title}\n")
+            f.write(f"时间: {news.pub_time}\n")
+            f.write(f"链接: {news.url}\n")
+            f.write(f"图片: {news.img_url}\n")
+            f.write("---\n")
+
+    return {
+        "success": True,
+        "news": [item.model_dump() for item in sample_news],
+        "count": len(sample_news),
+        "stdout": "使用示例数据（爬虫不可用）",
+    }
+
+
 @app.get("/api/parse")
 async def parse_existing():
     """
     解析已有的 hot_news.txt 文件
     （不重新抓取）
     """
-    SPIDER_DIR = Path(r"C:\Users\admin\Desktop\hot_news_spider")
-    output_path = SPIDER_DIR / "hot_news.txt"
-    news = parse_hot_news_file(str(output_path))
+    news = parse_hot_news_file(str(OUTPUT_FILE))
 
     return {
         "success": True,
@@ -235,14 +284,14 @@ async def extract_keywords_api(request: KeywordRequest):
 @app.get("/api/status")
 async def status():
     """检查服务状态"""
-    SPIDER_DIR = Path(r"C:\Users\admin\Desktop\hot_news_spider")
     spider_path = SPIDER_DIR / "run.py"
-    output_path = SPIDER_DIR / "hot_news.txt"
 
     return {
         "status": "ok",
         "spider_exists": spider_path.exists(),
-        "output_exists": output_path.exists(),
+        "output_exists": OUTPUT_FILE.exists(),
+        "data_dir": str(DATA_DIR),
+        "spider_dir": str(SPIDER_DIR),
     }
 
 

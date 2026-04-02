@@ -7,6 +7,12 @@ export interface NewsItem {
   source: string;
   category: string;
   channel: string;
+  // 扩展字段
+  hot_value?: number | string;
+  answer_count?: number;
+  follower_count?: number;
+  article_info?: string;
+  img_list?: string[];
 }
 
 // 关键词
@@ -36,6 +42,20 @@ export interface GraphData {
   edges: CategoryEdge[];
 }
 
+// 时间线数据
+export interface TimelineItem {
+  date: string;
+  count: number;
+  title?: string;
+  source?: string;
+}
+
+// 词云数据项
+export interface WordCloudItem {
+  text: string;
+  value: number;
+}
+
 // 节点运行时数据
 export interface NodeData extends Record<string, unknown> {
   // 热点抓取节点
@@ -50,4 +70,21 @@ export interface NodeData extends Record<string, unknown> {
   keywordStatus?: 'idle' | 'running' | 'success' | 'error';
   topK?: number;
   method?: 'tfidf' | 'textrank';
+
+  // 词云节点
+  wordCloudData?: WordCloudItem[];
+  wordCloudStatus?: 'idle' | 'running' | 'success' | 'error';
+  wordCloudTopK?: number;
+
+  // 关系图谱节点
+  graphData?: GraphData;
+  graphStatus?: 'idle' | 'running' | 'success' | 'error';
+
+  // 时间线节点
+  timelineData?: TimelineItem[];
+  timelineStatus?: 'idle' | 'running' | 'success' | 'error';
+
+  // 力导向图节点
+  forceGraphData?: GraphData;
+  forceGraphStatus?: 'idle' | 'running' | 'success' | 'error';
 }

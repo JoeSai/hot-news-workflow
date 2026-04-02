@@ -2,11 +2,11 @@ import type { NewsItem } from '../types/workflow';
 
 const API_BASE = 'http://localhost:8000/api';
 
-export async function runCrawler(platforms: string[]): Promise<NewsItem[]> {
+export async function runCrawler(platforms: string[], limit: number = 30): Promise<NewsItem[]> {
   const response = await fetch(`${API_BASE}/crawl`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ platforms }),
+    body: JSON.stringify({ platforms, limit }),
   });
 
   if (!response.ok) {

@@ -1,4 +1,5 @@
 import { ReactFlowProvider } from '@xyflow/react';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import WorkflowCanvas from './components/WorkflowCanvas';
 
 function App() {
@@ -18,7 +19,9 @@ function App() {
       {/* Main Canvas */}
       <main className="h-[calc(100vh-3.5rem)]">
         <ReactFlowProvider>
-          <WorkflowCanvas />
+          <ErrorBoundary>
+            <WorkflowCanvas />
+          </ErrorBoundary>
         </ReactFlowProvider>
       </main>
     </div>
