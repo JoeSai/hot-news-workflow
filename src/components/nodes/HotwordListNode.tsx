@@ -69,6 +69,7 @@ function HotwordListNode({ id, data }: HotwordListNodeProps) {
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-200 w-80">
       <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
 
       {/* Header */}
       <div className="bg-gradient-to-r from-violet-500 to-purple-500 text-white px-4 py-2 rounded-t-lg">
