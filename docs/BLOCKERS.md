@@ -89,25 +89,32 @@
 
 ## v0.19 — 封面图 AI 生成
 
-### v0.19-R1: 接入 Google Imagen
+### v0.19-R1: 接入 MiniMax image-01
 
-**阻塞：** 需要 API Key + 确认模型。
+**原阻塞：** 需要 Google API Key + 确认调用方式。
 
-**你提到的信息：**
-- 供应商：Google
-- 模型：`gemini-3.1-flash-preview`（nano-banana2）
+**方案变更：** 不接 Google Imagen，统一用 MiniMax Token Plan（已有 API Key）。
 
-**实现路径：**
-1. Google Gemini API 支持 image generation，用 REST 调用
-2. 后端新增 `/api/generate-cover` 端点
-3. API Key 走环境变量 `GOOGLE_API_KEY`
+**MiniMax image-01 接口信息：**
+- **Endpoint:** `POST https://api.minimaxi.com/v1/image_generation`
+- **Auth:** `Authorization: Bearer {LLM_API_KEY}`（复用同一个 key）
+- **Model:** `image-01`（文生图 + 图生图）
+- **参数：** `model`, `prompt`, `aspect_ratio`（如 `"3:4"` 对应小红书封面比例）, `response_format: "base64"`
+- **返回：** `data.image_base64[]`（base64 编码的 JPEG）
 
-**需要你提供：**
-- [ ] `GOOGLE_API_KEY=________________`
-- [ ] 确认 API 调用格式（Gemini 图片生成是用 `generateContent` 还是 `imagen` 端点？给一下文档链接或示例 curl）
-- [ ] 图片尺寸偏好：小红书封面 1080×1440？还是 1:1？
+**示例调用：**
+```python
+payload = {
+    "model": "image-01",
+    "prompt": "AI科技感封面，标题：大模型开源趋势",
+    "aspect_ratio": "3:4",
+    "response_format": "base64",
+}
+response = requests.post(url, headers={"Authorization": f"Bearer {api_key}"}, json=payload)
+images = response.json()["data"]["image_base64"]
+```
 
-**状态：** 🔴 待填 API Key + 确认调用方式
+**状态：** ✅ 已解除阻塞，可开发
 
 ---
 
