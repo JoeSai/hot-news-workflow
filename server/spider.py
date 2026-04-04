@@ -1145,9 +1145,14 @@ def is_less_than_user_minutes(datetime_str: str, minutes: int = 30) -> bool:
     return time_difference < timedelta(minutes=minutes)
 
 
-async def crawl_all(platforms: List[str], limit: int = 20) -> List[Dict]:
-    """爬取所有平台的新闻（带防封策略）"""
+async def crawl_all(platforms: List[str], limit: int = 20) -> Tuple[List[Dict], Dict[str, int]]:
+    """爬取所有平台的新闻（带防封策略）
+
+    Returns:
+        (all_news, platform_stats) - 新闻列表和每个平台的抓取数量
+    """
     all_news = []
+    platform_stats: Dict[str, int] = {}
 
     for platform in platforms:
         spider = get_spider(platform)
@@ -1157,15 +1162,18 @@ async def crawl_all(platforms: List[str], limit: int = 20) -> List[Dict]:
                 news = spider.get_news_list(limit)
                 print(f"  获取到 {len(news)} 条新闻")
                 all_news.extend(news)
+                platform_stats[platform] = len(news)
                 # 平台间随机延迟，避免请求过于频繁
                 random_delay()
             except Exception as e:
                 print(f"  {platform} 爬取失败: {e}")
+                platform_stats[platform] = 0
         else:
             print(f"未知平台: {platform}")
+            platform_stats[platform] = 0
 
     all_news.sort(key=lambda x: x.get("pub_time", ""), reverse=True)
-    return all_news[:limit * len(platforms) if platforms else limit]
+    return all_news[:limit * len(platforms) if platforms else limit], platform_stats
 
 
 async def crawl_with_details(platforms: List[str], limit: int = 20, detail_limit: int = 5) -> Tuple[List[Dict], List[Dict]]:

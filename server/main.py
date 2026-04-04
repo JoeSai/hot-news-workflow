@@ -128,8 +128,8 @@ async def run_crawler(request: CrawlRequest):
 
         platforms = [platform_map.get(p, p) for p in request.platforms]
 
-        # 抓取新闻
-        news_data = await crawl_all(platforms, limit=request.limit)
+        # 抓取新闻（返回数据和平台统计）
+        news_data, platform_stats = await crawl_all(platforms, limit=request.limit)
 
         # 保存到文件
         DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -145,10 +145,22 @@ async def run_crawler(request: CrawlRequest):
         # 转换为NewsItem格式
         news_items = [NewsItem(**n) for n in news_data]
 
+        # 构建平台结果摘要
+        platform_results = []
+        for p in request.platforms:
+            key = platform_map.get(p, p)
+            count = platform_stats.get(key, 0)
+            platform_results.append({
+                "platform": p,
+                "count": count,
+                "success": count > 0
+            })
+
         return {
             "success": True,
             "news": [item.model_dump() for item in news_items],
             "count": len(news_items),
+            "platformResults": platform_results,
             "stdout": f"成功抓取 {len(news_items)} 条新闻",
         }
     except Exception as e:

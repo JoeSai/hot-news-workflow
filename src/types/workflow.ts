@@ -74,6 +74,7 @@ export interface NodeData extends Record<string, unknown> {
   news?: NewsItem[];
   status?: 'idle' | 'running' | 'success' | 'error';
   error?: string;
+  platformResults?: { platform: string; count: number; success: boolean }[];
 
   // 关键词提取节点
   keywords?: Keyword[];

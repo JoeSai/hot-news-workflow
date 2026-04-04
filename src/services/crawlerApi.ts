@@ -2,7 +2,18 @@ import type { NewsItem } from '../types/workflow';
 
 const API_BASE = 'http://localhost:8000/api';
 
-export async function runCrawler(platforms: string[], limit: number = 30): Promise<NewsItem[]> {
+export interface PlatformResult {
+  platform: string;
+  count: number;
+  success: boolean;
+}
+
+export interface CrawlResult {
+  news: NewsItem[];
+  platformResults: PlatformResult[];
+}
+
+export async function runCrawler(platforms: string[], limit: number = 30): Promise<CrawlResult> {
   const response = await fetch(`${API_BASE}/crawl`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -14,7 +25,10 @@ export async function runCrawler(platforms: string[], limit: number = 30): Promi
   }
 
   const data = await response.json();
-  return data.news as NewsItem[];
+  return {
+    news: data.news as NewsItem[],
+    platformResults: data.platformResults as PlatformResult[],
+  };
 }
 
 export async function parseHotNewsFile(): Promise<NewsItem[]> {

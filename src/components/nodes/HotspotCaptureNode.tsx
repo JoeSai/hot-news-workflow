@@ -1,7 +1,7 @@
 import { Handle, Position } from '@xyflow/react';
 import { useWorkflowStore } from '../../hooks/useWorkflowStore';
 import type { NodeData } from '../../types/workflow';
-import { runCrawler, parseHotNewsFile } from '../../services/crawlerApi';
+import { runCrawler, parseHotNewsFile, type PlatformResult } from '../../services/crawlerApi';
 
 const PLATFORMS = [
   // 新闻平台
@@ -70,9 +70,14 @@ function HotspotCaptureNode({ id, data }: HotspotCaptureNodeProps) {
     updateNodeData(id, { status: 'running' });
 
     try {
-      const news = await runCrawler(selectedPlatforms, limit);
+      const result = await runCrawler(selectedPlatforms, limit);
       // 将数据存入自身节点，并声明输出类型
-      updateNodeData(id, { status: 'success', news, outputType: 'news' });
+      updateNodeData(id, {
+        status: 'success',
+        news: result.news,
+        outputType: 'news',
+        platformResults: result.platformResults
+      });
     } catch (error) {
       updateNodeData(id, {
         status: 'error',
@@ -201,6 +206,32 @@ function HotspotCaptureNode({ id, data }: HotspotCaptureNodeProps) {
 
         {/* 状态 */}
         <div className={`text-sm ${getStatusColor()}`}>{getStatusText()}</div>
+
+        {/* 各平台抓取结果 */}
+        {data.status === 'success' && data.platformResults && (
+          <div className="border-t border-gray-200 pt-3 mt-3">
+            <div className="text-xs font-medium text-gray-500 mb-2">抓取结果</div>
+            <div className="space-y-1 max-h-32 overflow-y-auto">
+              {data.platformResults.map((pr: PlatformResult) => {
+                const platform = PLATFORMS.find(p => p.id === pr.platform);
+                return (
+                  <div key={pr.platform} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: platform?.color || '#888' }}
+                      />
+                      <span className="text-gray-600">{platform?.label || pr.platform}</span>
+                    </div>
+                    <span className={pr.success ? 'text-green-600' : 'text-red-500'}>
+                      {pr.success ? `${pr.count} 条` : '失败'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
