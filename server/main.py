@@ -581,6 +581,41 @@ async def generate_content(request: ContentGenerateRequest):
         return {"success": False, "error": str(e)}
 
 
+
+class GlobalSettingsRequest(BaseModel):
+    provider: str = "deepseek"
+    api_key: Optional[str] = None
+    api_base: Optional[str] = None
+    model: Optional[str] = None
+
+
+@app.get("/api/settings", response_model=dict)
+async def get_settings():
+    """获取全局 AI 设置"""
+    try:
+        from db import get_global_settings
+        settings = get_global_settings()
+        return {"success": True, "settings": settings}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/settings", response_model=dict)
+async def save_settings(request: GlobalSettingsRequest):
+    """保存全局 AI 设置"""
+    try:
+        from db import save_global_settings
+        save_global_settings(
+            provider=request.provider,
+            api_key=request.api_key,
+            api_base=request.api_base,
+            model=request.model,
+        )
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def parse_draft_structured(draft: str) -> dict:
     """解析草稿文本为结构化数据"""
     if not draft:

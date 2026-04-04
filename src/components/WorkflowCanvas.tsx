@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -8,6 +8,7 @@ import {
   Panel,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { getGlobalSettings, saveGlobalSettings, type GlobalSettings } from '../services/crawlerApi';
 
 import { useWorkflowStore, WORKFLOW_TEMPLATES } from '../hooks/useWorkflowStore';
 import HotspotCaptureNode from './nodes/HotspotCaptureNode';
@@ -39,6 +40,29 @@ function WorkflowCanvas() {
     useWorkflowStore();
   const [showTemplates, setShowTemplates] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+
+  // v0.17-R5: AI 全局设置
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsForm, setSettingsForm] = useState<GlobalSettings>({ provider: 'deepseek', api_key: null, api_base: null, model: null });
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
+  useEffect(() => {
+    if (showSettings) {
+      getGlobalSettings().then(s => setSettingsForm(s)).catch(() => {});
+    }
+  }, [showSettings]);
+
+  const handleSaveSettings = async () => {
+    setSettingsSaving(true);
+    try {
+      await saveGlobalSettings(settingsForm);
+      setShowSettings(false);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   // 获取当前运行的节点名称
   const getRunningNodeName = () => {
@@ -392,6 +416,72 @@ function WorkflowCanvas() {
               {nodes.length === 0 ? '点击"展开"选择模板快速开始' : `当前 ${nodes.length} 个节点，${edges.length} 条连线`}
             </div>
           )}
+        </Panel>
+
+        {/* AI 全局设置面板 */}
+        {showSettings && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
+            <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-72">
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-medium text-gray-700">⚙️ AI 全局设置</div>
+                <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
+              </div>
+              <div className="space-y-3 text-sm">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">供应商</label>
+                  <select
+                    value={settingsForm.provider}
+                    onChange={e => setSettingsForm(s => ({ ...s, provider: e.target.value }))}
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                  >
+                    <option value="deepseek">DeepSeek</option>
+                    <option value="minimax">MiniMax</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="claude">Claude</option>
+                    <option value="zhipu">智谱 GLM</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">API Key</label>
+                  <input
+                    type="password"
+                    value={settingsForm.api_key || ''}
+                    onChange={e => setSettingsForm(s => ({ ...s, api_key: e.target.value || null }))}
+                    placeholder="留空则使用环境变量"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">API Base（可选）</label>
+                  <input
+                    type="text"
+                    value={settingsForm.api_base || ''}
+                    onChange={e => setSettingsForm(s => ({ ...s, api_base: e.target.value || null }))}
+                    placeholder="如 https://api.minimaxi.com/v1"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                  />
+                </div>
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={settingsSaving}
+                  className="w-full py-1.5 bg-indigo-600 text-white rounded text-xs font-medium hover:bg-indigo-700 disabled:bg-gray-400"
+                >
+                  {settingsSaving ? '保存中...' : '💾 保存设置'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 右上角设置入口 */}
+        <Panel position="top-right" className="mt-2 mr-2">
+          <button
+            type="button"
+            onClick={() => setShowSettings(!showSettings)}
+            className="bg-white rounded-lg shadow px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200"
+          >
+            ⚙️ AI设置
+          </button>
         </Panel>
       </ReactFlow>
     </div>

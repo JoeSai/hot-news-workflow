@@ -255,3 +255,31 @@ export async function getContentStats(): Promise<ContentStats> {
   const result = await response.json();
   return result.stats as ContentStats;
 }
+
+// ==================== AI 全局设置 API ====================
+
+export interface GlobalSettings {
+  provider: string;
+  api_key: string | null;
+  api_base: string | null;
+  model: string | null;
+}
+
+export async function getGlobalSettings(): Promise<GlobalSettings> {
+  const response = await fetchWithTimeout(`${API_BASE}/settings`);
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error || '获取设置失败');
+  return data.settings as GlobalSettings;
+}
+
+export async function saveGlobalSettings(settings: Partial<GlobalSettings>): Promise<void> {
+  const response = await fetchWithTimeout(`${API_BASE}/settings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  });
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error || '保存设置失败');
+}

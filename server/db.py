@@ -109,6 +109,19 @@ def init_db():
         """)
 
 
+        # 全局设置表（API 供应商配置）
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS global_settings (
+                id INTEGER PRIMARY KEY,
+                provider TEXT NOT NULL DEFAULT 'deepseek',
+                api_key TEXT,
+                api_base TEXT,
+                model TEXT,
+                updated_at TEXT NOT NULL
+            )
+        """)
+
+
 def save_draft(keywords: List[str], titles: List[str], body: str, tags: List[str], style: str) -> int:
     """保存草稿"""
     with get_db_write() as conn:
@@ -387,6 +400,28 @@ def get_content_stats() -> Dict[str, Any]:
         }
     finally:
         conn.close()
+
+
+def get_global_settings() -> dict:
+    """获取全局设置"""
+    with get_db() as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM global_settings WHERE id = 1")
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
+        return {"provider": "deepseek", "api_key": None, "api_base": None, "model": None}
+
+
+def save_global_settings(provider: str, api_key: str = None, api_base: str = None, model: str = None) -> None:
+    """保存全局设置"""
+    with get_db_write() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO global_settings (id, provider, api_key, api_base, model, updated_at)
+            VALUES (1, ?, ?, ?, ?, datetime('now'))
+        """, (provider, api_key, api_base, model))
 
 
 # 初始化数据库
