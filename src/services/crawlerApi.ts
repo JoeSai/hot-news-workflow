@@ -77,10 +77,18 @@ export interface GenerateContentParams {
 }
 
 export async function generateContent(params: GenerateContentParams): Promise<string> {
+  // 转换为后端 snake_case 字段名
+  const payload = {
+    keywords: params.keywords,
+    news_titles: params.newsTitles || [],
+    style: params.style,
+    api_type: params.apiType,
+    api_key: params.apiKey,
+  };
   const response = await fetch(`${API_BASE}/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
