@@ -530,7 +530,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       }
 
       // v0.18-R3: topicRecommend 纳入 runAll，自动取 TOP 5 关键词
-      if (node.type === 'topicRecommend') {
+      if (node.type === 'topicRecommend' || node.type === 'topicHotword') {
         const currentState = get();
         const currentNodeData = currentState.nodes.find(n => n.id === nodeId)?.data as NodeData;
         const selectedKws = currentNodeData?.selectedKeywords as Keyword[] || [];

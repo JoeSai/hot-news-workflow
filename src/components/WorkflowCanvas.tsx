@@ -18,6 +18,7 @@ import NewsDetailNode from './nodes/NewsDetailNode';
 import HotwordListNode from './nodes/HotwordListNode';
 import ContentGenerateNode from './nodes/ContentGenerateNode';
 import TopicRecommendNode from './nodes/TopicRecommendNode';
+import TopicHotwordNode from './nodes/TopicHotwordNode';
 import TrendNode from './nodes/TrendNode';
 import ContentRecordNode from './nodes/ContentRecordNode';
 import CoverImageNode from './nodes/CoverImageNode';
@@ -30,6 +31,7 @@ const nodeTypes = {
   hotwordList: HotwordListNode,
   contentGenerate: ContentGenerateNode,
   topicRecommend: TopicRecommendNode,
+  topicHotword: TopicHotwordNode,
   trend: TrendNode,
   contentRecord: ContentRecordNode,
   coverImage: CoverImageNode,
@@ -173,6 +175,16 @@ function WorkflowCanvas() {
     addNode(newNode);
   }, [addNode]);
 
+  const addTopicHotwordNode = useCallback(() => {
+    const newNode = {
+      id: getNextNodeId('topicHotword'),
+      type: 'topicHotword',
+      position: { x: 750, y: 300 },
+      data: {},
+    };
+    addNode(newNode);
+  }, [addNode]);
+
   const addTrendNode = useCallback(() => {
     const newNode = {
       id: getNextNodeId('trend'),
@@ -304,6 +316,14 @@ function WorkflowCanvas() {
             >
               <span>🎯</span>
               <span>选题推荐</span>
+            </button>
+            <button
+              type="button"
+              onClick={addTopicHotwordNode}
+              className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-gradient-to-r from-pink-50 to-violet-50 hover:from-pink-100 hover:to-violet-100 rounded-md transition-colors"
+            >
+              <span>🎯📝</span>
+              <span>选题热词（合并版）</span>
             </button>
             <button
               type="button"
