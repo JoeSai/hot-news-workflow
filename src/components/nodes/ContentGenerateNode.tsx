@@ -27,6 +27,7 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
   const [copied, setCopied] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [selectedDraft, setSelectedDraft] = useState<string | null>(null);
+  const [showXhsPreview, setShowXhsPreview] = useState(false);
 
   // 组件挂载时清除旧错误状态
   useEffect(() => {
@@ -364,8 +365,71 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
         {/* 草稿预览 */}
         {parsed && parsed.body && (
           <div className="border-t border-gray-200 pt-4 space-y-3">
-            <div className="text-xs font-medium text-gray-500">📝 草稿预览</div>
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-medium text-gray-500">📝 草稿预览</div>
+              <button
+                type="button"
+                onClick={() => setShowXhsPreview(!showXhsPreview)}
+                className={`text-xs px-2 py-0.5 rounded ${showXhsPreview ? 'bg-pink-100 text-pink-600' : 'bg-gray-100 text-gray-500 hover:bg-pink-50'}`}
+              >
+                {showXhsPreview ? '返回编辑视图' : '🌸 小红书预览'}
+              </button>
+            </div>
 
+            {/* 小红书预览模式 */}
+            {showXhsPreview ? (
+              <div className="bg-gradient-to-b from-pink-50 to-white rounded-lg p-4 border border-pink-200">
+                {/* 封面图占位 */}
+                <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-lg h-32 mb-3 flex items-center justify-center text-white text-opacity-70">
+                  <span className="text-lg">📷 封面图</span>
+                </div>
+                {/* 标题 */}
+                <div className="text-base font-bold text-gray-800 mb-2 leading-tight">
+                  {parsed.titles[0] || '点击选择标题'}
+                </div>
+                {/* 作者信息 */}
+                <div className="flex items-center gap-2 mb-3 text-xs text-gray-500">
+                  <div className="w-6 h-6 bg-pink-400 rounded-full"></div>
+                  <span>AI创作助手</span>
+                  <span>·</span>
+                  <span>刚刚</span>
+                </div>
+                {/* 正文 */}
+                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-3">
+                  {parsed.body}
+                </div>
+                {/* 标签 */}
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {parsed.tags.map((tag, i) => (
+                    <span key={i} className="px-2 py-0.5 bg-pink-50 text-pink-500 rounded-full text-xs">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+                {/* 操作按钮 */}
+                <div className="flex gap-2 pt-2 border-t border-pink-100">
+                  <button
+                    onClick={() => copyToClipboard(parsed.titles[0] || '', 'xhs-title')}
+                    className="flex-1 py-1.5 bg-pink-500 text-white rounded text-xs hover:bg-pink-600"
+                  >
+                    📋 复制标题
+                  </button>
+                  <button
+                    onClick={() => copyToClipboard(parsed.body, 'xhs-body')}
+                    className="flex-1 py-1.5 bg-pink-500 text-white rounded text-xs hover:bg-pink-600"
+                  >
+                    📋 复制正文
+                  </button>
+                  <button
+                    onClick={() => copyToClipboard(parsed.tags.join(' '), 'xhs-tags')}
+                    className="flex-1 py-1.5 bg-pink-500 text-white rounded text-xs hover:bg-pink-600"
+                  >
+                    📋 复制标签
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
             {/* 标题 */}
             {parsed.titles.length > 0 && (
               <div>
@@ -431,9 +495,9 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
             <div className="text-xs text-gray-400 bg-gray-50 px-3 py-2 rounded">
               ⚠️ 草稿仅供参考，请修改后手动发布
             </div>
-          </div>
-        )}
           </>
+            )}
+          </div>
         )}
       </div>
     </div>
