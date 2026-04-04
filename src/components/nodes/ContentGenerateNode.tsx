@@ -119,6 +119,18 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
     setTimeout(() => setCopied(''), 2000);
   };
 
+  // v0.20-R2: 一键复制全部内容（标题+正文+标签，按小红书格式拼好）
+  const copyAllToClipboard = async () => {
+    if (!parsed) return;
+    const title = parsed.titles[0] || '';
+    const body = parsed.body;
+    const tags = parsed.tags.map(t => `#${t}`).join(' ');
+    const formatted = `标题：${title}\n\n正文：${body}\n\n${tags}`;
+    await navigator.clipboard.writeText(formatted);
+    setCopied('all');
+    setTimeout(() => setCopied(''), 2000);
+  };
+
   const parseDraft = (draft: string) => {
     if (!draft) return { titles: [], body: '', tags: [] };
 
@@ -533,6 +545,12 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
         ))}
       </div>
       <div className="flex gap-2 pt-2 border-t border-pink-100">
+        <button
+          onClick={copyAllToClipboard}
+          className="flex-1 py-1.5 bg-rose-500 text-white rounded text-xs hover:bg-rose-600 font-medium"
+        >
+          {copied === 'all' ? '✓ 已复制全部' : '🚀 一键复制全部'}
+        </button>
         <button
           onClick={() => copyToClipboard(parsed.titles[0] || '', 'xhs-title')}
           className="flex-1 py-1.5 bg-pink-500 text-white rounded text-xs hover:bg-pink-600"
