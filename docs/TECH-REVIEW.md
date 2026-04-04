@@ -102,6 +102,42 @@ if re.match(r'^[\d.%]+\$', word):
 
 ---
 
+## v0.18 — 待修 Bug
+
+对应需求：[PRODUCT-REQUIREMENTS.md v0.18](PRODUCT-REQUIREMENTS.md#v018--选题推荐重构)
+
+### 🔴 v0.18-B1: 选题推荐评分无区分度（全部 100%）
+
+**文件：** `src/components/nodes/TopicRecommendNode.tsx` line 60-91（`scoreKeyword`）
+
+**问题：** AI 赛道关键词匹配 "AI" 就 +30，几乎所有词都打到 80-100%。评分丧失了筛选功能，推荐等于不推荐。
+
+---
+
+### 🔴 v0.18-B2: 选题推荐输出是死胡同
+
+**文件：** `src/components/nodes/TopicRecommendNode.tsx` line 101
+
+**问题：** "生成推荐" 写入 `recommendations` 到自身 data，但没有任何下游节点读取这个字段。数据链在这里断掉。热词列表才是真正连接内容生成的节点。
+
+---
+
+### 🟠 v0.18-B3: topicRecommend 不在 runAll 执行链中
+
+**文件：** `src/hooks/useWorkflowStore.ts`（`runNode` switch + `runAll`）
+
+**问题：** `runNode` 没有 `case 'topicRecommend'`，`runAll` 也不处理。一键执行直接跳过此节点。
+
+---
+
+### 🟡 v0.18-B4: CoverImage 忽略上游关键词输入
+
+**文件：** `src/components/nodes/CoverImageNode.tsx` line 31, 176
+
+**问题：** 节点接收了上游 `inputKeywords`，但只在空状态显示提示文字，从未用于预填标题或生成建议。
+
+---
+
 ## 已修复
 
 | 编号 | 问题 | 修复版本 |
