@@ -136,7 +136,42 @@ function ContentRecordNode(_props: ContentRecordNodeProps) {
       .sort((a, b) => (b.avg_likes + b.avg_collects + b.avg_comments) - (a.avg_likes + a.avg_collects + a.avg_comments));
   }, [records]);
 
-  // v0.20-R4: 发布时间段效果统计
+  // v0.20-R5: 周报/月报生成
+  const [reportPeriod, setReportPeriod] = useState<'week' | 'month'>('week');
+
+  const REPORT = useMemo(() => {
+    const now = Date.now();
+    const cutoff = now - (reportPeriod === 'week' ? 7 : 30) * 24 * 60 * 60 * 1000;
+    const period = reportPeriod === 'week' ? '本周' : '本月';
+    const periodRecords = records.filter(r => {
+      if (!r.published_at) return false;
+      return new Date(r.published_at).getTime() >= cutoff;
+    });
+    if (periodRecords.length === 0) return null;
+    const totalLikes = periodRecords.reduce((s, r) => s + r.likes, 0);
+    const totalCollects = periodRecords.reduce((s, r) => s + r.collects, 0);
+    const totalComments = periodRecords.reduce((s, r) => s + r.comments, 0);
+    const totalShares = periodRecords.reduce((s, r) => s + r.shares, 0);
+    const totalEngagement = totalLikes + totalCollects + totalComments + totalShares;
+    const topPost = [...periodRecords].sort((a, b) => (b.likes + b.collects + b.comments + b.shares) - (a.likes + a.collects + a.comments + a.shares))[0];
+    const styleCount: Record<string, number> = {};
+    for (const r of periodRecords) {
+      styleCount[r.style || '未知'] = (styleCount[r.style || '未知'] || 0) + 1;
+    }
+    const topStyle = Object.entries(styleCount).sort((a, b) => b[1] - a[1])[0]?.[0] || '未知';
+    return {
+      period,
+      count: periodRecords.length,
+      totalLikes,
+      totalCollects,
+      totalComments,
+      totalShares,
+      totalEngagement,
+      topPost,
+      topStyle,
+      styleCount,
+    };
+  }, [records, reportPeriod]);
   const TIME_ANALYSIS = useMemo(() => {
     const periods = [
       { key: '🌙 凌晨 0-6点', min: 0, max: 6, total: { likes: 0, collects: 0, comments: 0, shares: 0 }, count: 0 },
@@ -342,6 +377,41 @@ function ContentRecordNode(_props: ContentRecordNodeProps) {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* v0.20-R5: 周报/月报自动生成 */}
+        {REPORT && (
+          <div className="border-t border-gray-200 pt-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs font-medium text-gray-500">📋 {REPORT.period}运营报告</div>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setReportPeriod('week')}
+                  className={`text-xs px-2 py-0.5 rounded ${reportPeriod === 'week' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'}`}
+                >
+                  周报
+                </button>
+                <button
+                  onClick={() => setReportPeriod('month')}
+                  className={`text-xs px-2 py-0.5 rounded ${reportPeriod === 'month' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'}`}
+                >
+                  月报
+                </button>
+              </div>
+            </div>
+            <div className="bg-indigo-50 rounded-lg p-3 text-xs space-y-2">
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div><div className="text-lg font-bold text-indigo-700">{REPORT.count}</div><div className="text-gray-500">发布笔记</div></div>
+                <div><div className="text-lg font-bold text-pink-600">{REPORT.totalLikes}</div><div className="text-gray-500">总点赞</div></div>
+                <div><div className="text-lg font-bold text-blue-600">{REPORT.totalCollects}</div><div className="text-gray-500">总收藏</div></div>
+                <div><div className="text-lg font-bold text-indigo-700">{REPORT.totalEngagement}</div><div className="text-gray-500">总互动</div></div>
+              </div>
+              <div className="border-t border-indigo-100 pt-2 space-y-1">
+                <div className="flex justify-between"><span className="text-gray-500">最佳表现</span><span className="text-gray-700 font-medium truncate ml-2">{REPORT.topPost?.draft_title || REPORT.topPost?.platform}</span><span className="text-pink-600 font-bold ml-2">{(REPORT.topPost?.likes || 0) + (REPORT.topPost?.collects || 0)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">热门类型</span><span className="text-gray-700 font-medium">{REPORT.topStyle}</span><span className="text-gray-400 ml-2">({(REPORT.styleCount || {})[REPORT.topStyle] || 0}篇)</span></div>
+              </div>
             </div>
           </div>
         )}
