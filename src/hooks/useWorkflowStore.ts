@@ -154,6 +154,7 @@ export function getInputData<T extends NewsItem | Keyword>(
 interface WorkflowState {
   nodes: Node[];
   edges: Edge[];
+  runningNodeId: string | null;
 
   // Actions
   setNodes: (nodes: Node[]) => void;
@@ -305,6 +306,7 @@ const savedWorkflow = loadWorkflow();
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   nodes: savedWorkflow.nodes,
   edges: savedWorkflow.edges,
+  runningNodeId: null,
 
   setNodes: (nodes) => {
     set({ nodes });
@@ -496,6 +498,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       const node = nodeMap.get(nodeId);
       if (!node) continue;
 
+      // 标记当前运行的节点
+      set({ runningNodeId: nodeId });
+
       // 只执行有执行逻辑的节点类型
       if (node.type === 'hotspotCapture' || node.type === 'keywordExtract' || node.type === 'contentGenerate') {
         await get().runNode(nodeId);
@@ -530,6 +535,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         inDegree.set(nextId, newDegree);
         if (newDegree === 0) queue.push(nextId);
       }
+
+      // 清除运行中标记
+      set({ runningNodeId: null });
     }
   },
 }));

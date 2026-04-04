@@ -35,10 +35,23 @@ const nodeTypes = {
 };
 
 function WorkflowCanvas() {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, clearWorkflow, loadTemplate, runAll } =
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, clearWorkflow, loadTemplate, runAll, runningNodeId } =
     useWorkflowStore();
   const [showTemplates, setShowTemplates] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+
+  // 获取当前运行的节点名称
+  const getRunningNodeName = () => {
+    if (!runningNodeId) return '';
+    const node = nodes.find(n => n.id === runningNodeId);
+    if (!node) return '';
+    switch (node.type) {
+      case 'hotspotCapture': return '热点抓取';
+      case 'keywordExtract': return '关键词提取';
+      case 'contentGenerate': return 'AI内容生成';
+      default: return node.type;
+    }
+  };
 
   // 计算下一个可用的节点ID，基于已有节点的最大ID
   const getNextNodeId = useCallback((prefix: string) => {
@@ -228,7 +241,7 @@ function WorkflowCanvas() {
               className={`w-full mb-2 px-3 py-2 rounded-md text-sm font-medium text-white transition-colors flex items-center justify-center gap-2
                 ${isRunning ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
             >
-              {isRunning ? '⏳ 执行中...' : '▶ 一键执行'}
+              {isRunning ? `⏳ ${getRunningNodeName() || '执行中...'}...` : '▶ 一键执行'}
             </button>
           )}
           <div className="text-sm font-medium text-gray-700 mb-2">📦 添加节点</div>
