@@ -1,6 +1,6 @@
 # Hot News Workflow
 
-热点新闻工作流系统，支持多平台新闻抓取、关键词提取、可视化，目标是多平台社媒自动运营。
+热点新闻工作流系统，支持多平台新闻抓取、关键词提取、选题推荐、AI内容生成，目标是多平台社媒自动运营。
 
 ---
 
@@ -11,24 +11,12 @@
 节点通过 React Flow 连线传递数据，**不使用全局 store 共享数据**。
 
 ```
-热点抓取 → (news[]) → 关键词提取 → (keywords[]) → 词云
-                                    ↓
-                              热点详情
+热点抓取 → 关键词提取 → 选题推荐 → AI内容生成
+                ↓              ↓
+            词云视图        热词列表
+                              ↓
+                          热点详情
 ```
-
-**节点获取上游数据的标准方式** (`src/hooks/useWorkflowStore.ts`):
-```typescript
-const news = getInputData<NewsItem>(id, nodes, edges, 'news');
-```
-
-### 节点开发
-
-添加新节点需要：
-1. 在 `src/components/nodes/` 创建组件
-2. 使用 `<Handle>` 声明输入输出
-3. 用 `getInputData()` 读取连线数据
-4. 用 `updateNodeData()` 存储输出
-5. 在 `WorkflowCanvas.tsx` 注册
 
 ### 当前节点
 
@@ -36,8 +24,18 @@ const news = getInputData<NewsItem>(id, nodes, edges, 'news');
 |------|--------|------|
 | 热点抓取 | `hotspotCapture` | 多平台新闻抓取 |
 | 关键词提取 | `keywordExtract` | YAKE 关键短语提取 |
+| 选题推荐 | `topicRecommend` | AI相关性评分，推荐选题 |
+| 热词列表 | `hotwordList` | 可选择热词，支持复制 |
 | 词云视图 | `wordCloud` | Canvas 词云渲染 |
 | 热点详情 | `newsDetail` | 分页浏览新闻 |
+| AI内容生成 | `contentGenerate` | 调用AI生成小红书草稿 |
+
+### 爬虫平台
+
+- **新闻媒体**: 网易、澎湃、腾讯、搜狐、新浪、中国日报
+- **科技资讯**: IT之家、今日头条
+- **热搜榜单**: 微博、知乎
+- **AI垂直**: 36氪、量子位、机器之心、HackerNews
 
 ---
 
@@ -45,20 +43,25 @@ const news = getInputData<NewsItem>(id, nodes, edges, 'news');
 
 ### 关键词提取
 
-使用 **YAKE 关键短语提取**（默认模式 `phrase`），能提取「AI创业」「芯片短缺」等短语，而非单独高频词。
+使用 **YAKE 关键短语提取**（默认模式 `phrase`），能提取「AI创业」「芯片短缺」等短语。
 
-过滤通用词：特朗普、伊朗、报道据悉、去年今年...
+### 选题推荐
+
+基于 AI 相关性关键词库评分，推荐适合写的选题并标注类型（科普/观点/教程/测评）。
+
+### AI 内容生成
+
+支持 DeepSeek / OpenAI API，生成小红书风格草稿（标题备选、正文、标签）。
 
 ### 爬虫防封
 
 - 7 个 User-Agent 轮换
 - 2-5 秒随机延迟
-- 429 限流 10/20/30 秒退避
-- 指数退避 2/4/8 秒
+- 429 限流退避
 
 ### 工作流存储
 
-节点和连线自动保存到 localStorage（key: `hot-news-workflow`），刷新页面自动恢复。
+localStorage 自动保存，刷新不丢失。
 
 ---
 
@@ -79,8 +82,18 @@ interface Keyword {
   word: string;
   weight: number;
   type?: 'word' | 'phrase';
-  score?: number;
 }
+```
+
+---
+
+## API 端点
+
+```
+POST /api/crawl       # 抓取新闻
+POST /api/keywords    # 提取关键词
+POST /api/generate     # AI生成内容
+GET  /api/status      # 服务状态
 ```
 
 ---
@@ -89,15 +102,14 @@ interface Keyword {
 
 ```bash
 pnpm dev                  # 前端 (localhost:5173)
-python3 -m server.main  # 后端 (localhost:8000)
+python3 -m server.main   # 后端 (localhost:8000)
 pip3 install -r server/requirements.txt
 ```
 
 ---
 
-## 扩展方向
+## 设计原则
 
-1. **内容生成节点** — 接入 AI，基于热词生成社媒内容
-2. **多平台发布** — 小红书、微博、X 等
-3. **定时发布** — Cron 调度
-4. **审核流程** — 生成内容先审后发
+- **只生成草稿** — 不做自动发布，用户手动审核
+- **效果可验证** — 支持数据回填和对比
+- **赛道可迁移** — 架构支持扩展到其他垂类
