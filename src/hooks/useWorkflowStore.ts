@@ -67,19 +67,7 @@ const DEFAULT_WORKFLOW = {
 
 // 从 localStorage 加载保存的工作流
 function loadWorkflow(): { nodes: Node[]; edges: Edge[] } {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // 确保返回有效的结构
-      if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
-        return { nodes: parsed.nodes, edges: parsed.edges };
-      }
-    }
-  } catch (e) {
-    console.warn('加载工作流失败:', e);
-  }
-  // 返回默认工作流
+  // 暂时强制使用默认工作流，忽略 localStorage
   return DEFAULT_WORKFLOW;
 }
 
