@@ -1,6 +1,7 @@
 import { memo, useState, useMemo, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useWorkflowStore, getInputData } from '../../hooks/useWorkflowStore';
+import { useDraftHistory } from '../../hooks/useDraftHistory';
 import type { NodeData, Keyword, NewsItem } from '../../types/workflow';
 import { generateContent } from '../../services/crawlerApi';
 
@@ -18,11 +19,14 @@ const CONTENT_STYLES = [
 
 function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
   const { nodes, edges, updateNodeData } = useWorkflowStore();
+  const { drafts, addDraft, deleteDraft, exportDraft } = useDraftHistory();
   const [style, setStyle] = useState(data.style || '科普向');
   const [apiType, setApiType] = useState(data.apiType || 'minimax');
   const [apiKey, setApiKey] = useState(data.apiKey || '');
   const [useServerKey, setUseServerKey] = useState(data.useServerKey || false);
   const [copied, setCopied] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+  const [selectedDraft, setSelectedDraft] = useState<string | null>(null);
 
   // 组件挂载时清除旧错误状态
   useEffect(() => {
@@ -86,6 +90,15 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
         draftBody: result.body,
         draftTags: result.tags,
         outputType: 'draft'
+      });
+
+      // 保存到草稿历史
+      addDraft({
+        keywords: selectedKeywords.map(k => k.word),
+        titles: result.titles,
+        body: result.body,
+        tags: result.tags,
+        style,
       });
     } catch (error) {
       updateNodeData(id, {
@@ -160,14 +173,95 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
 
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-500 to-blue-500 text-white px-4 py-2 rounded-t-lg">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">✍️</span>
-          <span className="font-medium">AI 内容生成</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">✍️</span>
+            <span className="font-medium">AI 内容生成</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowHistory(!showHistory)}
+            className={`text-xs px-2 py-0.5 rounded ${showHistory ? 'bg-white text-indigo-600' : 'bg-indigo-400 hover:bg-indigo-300'}`}
+          >
+            {showHistory ? '返回' : `历史 ${drafts.length > 0 ? `(${drafts.length})` : ''}`}
+          </button>
         </div>
       </div>
 
       {/* Body */}
       <div className="p-4 space-y-4">
+        {showHistory ? (
+          /* 历史视图 */
+          drafts.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <div className="text-4xl mb-2">📭</div>
+              <div className="text-sm">暂无草稿历史</div>
+              <div className="text-xs mt-1">生成草稿后会自动保存</div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="text-xs text-gray-500 flex items-center justify-between">
+                <span>共 {drafts.length} 条草稿</span>
+              </div>
+              <div className="border border-gray-200 rounded-lg max-h-96 overflow-y-auto">
+                {drafts.map((d) => (
+                  <div key={d.id} className="border-b border-gray-100 last:border-b-0">
+                    <div
+                      className="px-3 py-2 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => setSelectedDraft(selectedDraft === d.id ? null : d.id)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-800 truncate">
+                            {d.titles[0] || '无标题'}
+                          </div>
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            {d.createdAt} · {d.style}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); exportDraft(d, 'markdown'); }}
+                            className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100"
+                            title="导出 MD"
+                          >
+                            MD
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); exportDraft(d, 'json'); }}
+                            className="text-xs px-2 py-0.5 bg-green-50 text-green-600 rounded hover:bg-green-100"
+                            title="导出 JSON"
+                          >
+                            JSON
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteDraft(d.id); }}
+                            className="text-xs px-2 py-0.5 bg-red-50 text-red-500 rounded hover:bg-red-100"
+                            title="删除"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                      {/* 展开预览 */}
+                      {selectedDraft === d.id && (
+                        <div className="mt-2 text-xs text-gray-600 bg-gray-50 rounded p-2 space-y-1">
+                          <div className="font-medium text-indigo-600">标题备选：</div>
+                          {d.titles.map((t, i) => <div key={i} className="ml-2">· {t}</div>)}
+                          <div className="font-medium text-indigo-600 mt-2">正文：</div>
+                          <div className="ml-2 whitespace-pre-wrap">{d.body.slice(0, 200)}{d.body.length > 200 ? '...' : ''}</div>
+                          <div className="font-medium text-indigo-600 mt-2">标签：</div>
+                          <div className="ml-2">{d.tags.map(t => `#${t}`).join(' ')}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        ) : (
+          <>
         {/* 输入信息 */}
         <div className="text-sm text-gray-600">
           <div>热词: <span className="font-medium">{selectedKeywords.length || inputKeywords.length}</span> 个</div>
@@ -338,6 +432,8 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
               ⚠️ 草稿仅供参考，请修改后手动发布
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
     </div>
