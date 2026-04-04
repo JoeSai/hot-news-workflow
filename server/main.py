@@ -476,6 +476,111 @@ def extract_phrases_yake(titles: List[str], top_k: int = 50) -> List[dict]:
     result.sort(key=lambda x: x["weight"], reverse=True)
     return result[:top_k]
 
+
+# AI 供应商配置
+AI_PROVIDERS = {
+    "deepseek": {
+        "base_url": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat",
+        "key_env": "DEEPSEEK_API_KEY",
+    },
+    "minimax": {
+        "base_url": "https://api.minimaxi.com/v1",
+        "model": "MiniMax-Text-01",
+        "key_env": "MINIMAX_API_KEY",
+    },
+    "openai": {
+        "base_url": "https://api.openai.com/v1",
+        "model": "gpt-4o-mini",
+        "key_env": "OPENAI_API_KEY",
+    },
+    "claude": {
+        "base_url": "https://api.anthropic.com/v1",
+        "model": "claude-sonnet-4-20250514",
+        "key_env": "ANTHROPIC_API_KEY",
+    },
+    "zhipu": {
+        "base_url": "https://open.bigmodel.cn/api/paas/v4",
+        "model": "glm-4-flash",
+        "key_env": "ZHIPU_API_KEY",
+    },
+}
+
+@app.post("/api/generate", response_model=dict)
+async def generate_content(request: ContentGenerateRequest):
+    """AI 内容生成"""
+    try:
+        # 确定 API Key 来源
+        api_key = request.api_key or os.environ.get("DEEPSEEK_API_KEY", "")
+        provider = AI_PROVIDERS.get(request.api_type, AI_PROVIDERS["deepseek"])
+        base_url = request.api_base or provider["base_url"]
+        model = provider["model"]
+
+        if not api_key:
+            return {"success": False, "error": "请提供 API Key"}
+
+        # 构建 prompt
+        keywords_str = "、".join([k.get("word", k) if isinstance(k, dict) else str(k) for k in request.keywords[:10]])
+        style = request.style or "科普向"
+
+        news_context_block = ""
+        if request.news_titles:
+            news_context_block = "相关热点：\n" + "\n".join(request.news_titles[:5])
+
+        prompt_parts = [
+            "你是一个专业的小红书内容创作者，擅长写吸引人的 AI 赛道种草文案。",
+            f"风格要求：{style}",
+            f"关键词：{keywords_str}",
+        ]
+        if news_context_block:
+            prompt_parts.append(news_context_block)
+        prompt_parts.append("""请按以下格式生成内容：
+
+## 标题
+1. [标题1]
+2. [标题2]
+3. [标题3]
+
+## 正文
+[正文内容，800-1500字，使用 emoji，适当分段]
+
+## 推荐标签
+[标签1] [标签2] [标签3] [标签4] [标签5] [标签6] [标签7] [标签8]
+""")
+        prompt = "\n".join(prompt_parts)
+
+        result = call_openai_compatible_api(api_key, base_url, model, prompt)
+        if "error" in result:
+            return {"success": False, "error": result["error"]}
+
+        draft = result.get("content", "")
+        parsed = parse_draft_structured(draft)
+
+        # 保存草稿到数据库
+        try:
+            from db import save_draft as db_save_draft
+            keywords_list = [k.get("word", k) if isinstance(k, dict) else str(k) for k in request.keywords]
+            draft_id = db_save_draft(
+                keywords=keywords_list,
+                titles=parsed.get("titles", []),
+                body=parsed.get("body", ""),
+                tags=parsed.get("tags", []),
+                style=style,
+            )
+        except Exception:
+            pass  # 草稿保存失败不影响返回
+
+        return {
+            "success": True,
+            "draft": draft,
+            "titles": parsed.get("titles", []),
+            "body": parsed.get("body", ""),
+            "tags": parsed.get("tags", []),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def parse_draft_structured(draft: str) -> dict:
     """解析草稿文本为结构化数据"""
     if not draft:
