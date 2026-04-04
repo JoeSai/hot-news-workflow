@@ -1,6 +1,7 @@
 import { memo, useState, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useWorkflowStore, getInputData } from '../../hooks/useWorkflowStore';
+import { useDraftHistory } from '../../hooks/useDraftHistory';
 import type { NodeData, Keyword } from '../../types/workflow';
 
 interface TopicRecommendNodeProps {
@@ -37,6 +38,23 @@ const TOPIC_TYPES = {
 function TopicRecommendNode({ id }: TopicRecommendNodeProps) {
   const { nodes, edges, updateNodeData } = useWorkflowStore();
   const [aiRelevanceThreshold, setAiRelevanceThreshold] = useState(30);
+  const { drafts } = useDraftHistory();
+
+  // P2.5.3: 提取近 7 天草稿中已写过的关键词
+  const recentWrittenWords = useMemo(() => {
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const written = new Set<string>();
+    for (const draft of drafts) {
+      const draftTime = new Date(draft.createdAt).getTime();
+      if (isNaN(draftTime)) continue;
+      if (draftTime >= sevenDaysAgo) {
+        for (const kw of draft.keywords) {
+          written.add(kw);
+        }
+      }
+    }
+    return written;
+  }, [drafts]);
 
   // 从连线获取输入数据
   const inputKeywords = useMemo(() => {
@@ -194,10 +212,15 @@ function TopicRecommendNode({ id }: TopicRecommendNodeProps) {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
-                    <div className="flex items-center gap-1.5 mb-1">
+                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                       <span className="text-xs bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded">
                         {getTypeIcon(rec.topicType)} {rec.topicType}
                       </span>
+                      {recentWrittenWords.has(rec.word) && (
+                        <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                          📝 已写过
+                        </span>
+                      )}
                     </div>
                     <div className="font-medium text-gray-800">{rec.word}</div>
                   </div>
@@ -208,6 +231,7 @@ function TopicRecommendNode({ id }: TopicRecommendNodeProps) {
 
                 {/* 推荐理由 */}
                 <div className="text-xs text-gray-500 mt-1">
+                  {recentWrittenWords.has(rec.word) ? '⚠️ 近 7 天写过 · ' : ''}
                   {rec.aiScore >= 70 ? '🔥 强烈推荐' : rec.aiScore >= 50 ? '👍 推荐' : '👀 可考虑'}
                   {rec.topicType === '教程向' && ' · 适合出教程内容'}
                   {rec.topicType === '测评向' && ' · 适合出对比测评'}
