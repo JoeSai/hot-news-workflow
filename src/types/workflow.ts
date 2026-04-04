@@ -79,7 +79,7 @@ export interface NodeData extends Record<string, unknown> {
   keywords?: Keyword[];
   keywordStatus?: 'idle' | 'running' | 'success' | 'error';
   topK?: number;
-  method?: 'tfidf' | 'textrank';
+  method?: 'tfidf' | 'textrank' | 'phrase';
 
   // 词云节点
   wordCloudData?: WordCloudItem[];

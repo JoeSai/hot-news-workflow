@@ -59,7 +59,7 @@ function WorkflowCanvas() {
       position: { x: 400, y: 150 },
       data: {
         topK: 50,
-        method: 'tfidf',
+        method: 'phrase',
         keywordStatus: 'idle',
       },
     };

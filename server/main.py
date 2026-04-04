@@ -13,6 +13,7 @@ from collections import Counter
 
 import jieba
 import jieba.analyse
+import yake
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -220,13 +221,51 @@ async def parse_existing():
 class KeywordRequest(BaseModel):
     news: List[NewsItem]
     top_k: int = 50
-    method: str = "tfidf"  # tfidf 或 textrank
+    method: str = "phrase"  # tfidf / textrank / phrase
 
 
-def extract_keywords(news: List[NewsItem], top_k: int = 50, method: str = "tfidf") -> List[dict]:
+# 通用词过滤列表（新闻高频但对内容生成价值低）
+GENERIC_NEWS_TERMS = {
+    # 国际/政治人物（太通用）
+    '特朗普', '拜登', '普京', '奥巴马', '习近平', '李克强', '默克尔', '马克龙',
+    '伊朗', '俄罗斯', '美国', '中国', '日本', '韩国', '朝鲜', '乌克兰', '以色列',
+    '联合国', '北约', '欧盟', '外交部', '克里姆林宫', '白宫', '国会', '参议院', '众议院',
+    # 时间词
+    '今日', '昨天', '今天', '明日', '去年', '今年', '明年', '本周', '上周', '下周',
+    '凌晨', '傍晚', '上午', '下午', '晚上', '早些时候', '日前', '近日', '目前',
+    # 媒体惯用词
+    '报道', '据悉', '消息', '回应', '表示', '称', '认为', '指出', '强调', '声称',
+    '最新', '首个', '首次', '第一', '主要', '重要', '重大', '紧急', '突发',
+    # 数量词
+    '一个', '几个', '多个', '一名', '两人', '多人', '首次', '第一次', '第二届',
+    # 地名（太泛）
+    '北京', '上海', '广州', '深圳', '香港', '澳门', '台湾', '成都', '武汉', '西安',
+    # 机构（太泛）
+    '公司', '企业', '集团', '医院', '学校', '大学', '医院', '警方', '法院', '检察院',
+}
+
+# 停用词（常见无意义词）
+STOP_WORDS = {
+    '的', '了', '是', '在', '和', '与', '或', '为', '对', '这', '那', '就', '都',
+    '也', '要', '会', '能', '可以', '我们', '你们', '他们', '她们', '它们',
+    '自己', '什么', '这个', '那个', '因为', '所以', '但是', '如果', '虽然', '只是',
+    '还有', '没有', '不是', '而是', '而且', '或者', '以及', '关于', '通过', '进行',
+    '已经', '正在', '可能', '应该', '需要', '如何', '怎么', '怎样', '为什么', '哪个',
+    '哪些', '哪里', '谁', '多少', '很久',
+    '月', '日', '时', '分', '秒', '/年', '/', '—', '｜', '：', ':',
+    '！', '？', '。', '，', '、', '"', '"', ''', ''', '【', '】',
+    '[', ']', '(', ')', '（', '）', '.', ',', '!', '?', '<', '>', '{', '}',
+    '一下', '一点', '一些', '一直', '一定', '一起', '一般', '一样', '一方面', '另一方面',
+}
+
+
+def extract_keywords(news: List[NewsItem], top_k: int = 50, method: str = "phrase") -> List[dict]:
     """
-    从新闻标题中提取关键词
-    使用 jieba 的 TF-IDF 或 TextRank 算法
+    从新闻标题中提取关键词/关键短语
+    支持三种模式:
+    - tfidf: jieba TF-IDF 关键词
+    - textrank: jieba TextRank 关键词
+    - phrase: YAKE 关键短语（推荐，对内容生成最有价值）
     """
     # 合并所有标题
     titles = [item.title for item in news if item.title]
@@ -236,34 +275,115 @@ def extract_keywords(news: List[NewsItem], top_k: int = 50, method: str = "tfidf
 
     text = " ".join(titles)
 
-    # 停用词（常见无意义词）
-    stop_words = {
-        '的', '了', '是', '在', '和', '与', '或', '为', '对', '这', '那', '就', '都',
-        '也', '要', '会', '能', '可以', '一个', '我们', '你们', '他们', '她们', '它们',
-        '自己', '什么', '这个', '那个', '因为', '所以', '但是', '如果', '虽然', '只是',
-        '还有', '没有', '不是', '而是', '而且', '或者', '以及', '关于', '通过', '进行',
-        '已经', '正在', '可能', '应该', '需要', '如何', '怎么', '怎样', '为什么', '哪个',
-        '哪些', '哪里', '谁', '多少', '很久', '最新', '今日', '昨天', '今天', '去年',
-        '今年', '明年', '月', '日', '时', '分', '秒', '/年', '/', '—', '｜', '：', ':',
-        '！', '！', '？', '?', '。', '，', '、', '"', '"', ''', ''', '【', '】',
-        '[', ']', '(', ')', '（', '）', '.', ',', '!', '?', '<', '>', '{', '}',
-    }
+    # 短语提取模式（推荐）
+    if method == "phrase":
+        return extract_phrases_yake(titles, top_k)
 
-    # 使用 jieba 提取关键词
+    # 基于词的提取（tfidf/textrank）
     if method == "textrank":
-        keywords = jieba.analyse.textrank(text, topK=top_k, withWeight=True)
+        keywords = jieba.analyse.textrank(text, topK=top_k * 2, withWeight=True)
     else:
-        keywords = jieba.analyse.extract_tags(text, topK=top_k, withWeight=True)
+        keywords = jieba.analyse.extract_tags(text, topK=top_k * 2, withWeight=True)
 
-    # 过滤停用词和单字
     result = []
     for word, weight in keywords:
-        if len(word) >= 2 and word not in stop_words:
+        # 过滤
+        if len(word) >= 2 and word not in STOP_WORDS and word not in GENERIC_NEWS_TERMS:
             result.append({
                 "word": word,
                 "weight": round(weight, 4),
+                "type": "word"
             })
 
+    # 去重（同义词归一化简单处理）
+    seen = set()
+    unique_result = []
+    for item in result:
+        # 简单去重：跳过包含相同2字符的项
+        is_dup = False
+        for seen_item in seen:
+            if len(item["word"]) >= 3 and len(seen_item) >= 3:
+                if item["word"][:2] == seen_item[:2]:
+                    is_dup = True
+                    break
+        if not is_dup:
+            unique_result.append(item)
+            seen.add(item["word"])
+
+    return unique_result[:top_k]
+
+
+def extract_phrases_yake(titles: List[str], top_k: int = 50) -> List[dict]:
+    """
+    使用 YAKE 提取关键短语
+    YAKE 能提取多词短语，对内容生成更有价值
+    """
+    # 初始化 YAKE（中文）
+    kw_extractor = yake.KeywordExtractor(
+        lan="zh",           # 中文
+        n=3,                # 短语长度 1-3
+        dedupLim=0.7,       # 去重阈值（相似短语会被过滤）
+        dedupFunc="seqm",   # 字符串匹配去重
+        windowsSize=1,
+        top=top_k * 2,      # 先提取更多，后面过滤
+        features=None,
+    )
+
+    # 对每条标题单独提取，再合并
+    all_keywords = []
+    for title in titles:
+        if not title:
+            continue
+        # YAKE 对短文本效果更好
+        keywords = kw_extractor.extract_keywords(title)
+        all_keywords.extend(keywords)
+
+    # 按得分排序（YAKE 得分越低越好）
+    all_keywords.sort(key=lambda x: x[1])
+
+    # 过滤并去重
+    seen = set()
+    result = []
+    for word, score in all_keywords:
+        word = word.strip()
+
+        # 基本过滤
+        if len(word) < 2:
+            continue
+        if word in STOP_WORDS:
+            continue
+        if word in GENERIC_NEWS_TERMS:
+            continue
+
+        # 简短去重
+        key = word[:3] if len(word) >= 3 else word
+        if key in seen:
+            continue
+
+        # 过滤包含通用词的短语
+        is_filtered = False
+        for generic in GENERIC_NEWS_TERMS:
+            if generic in word and len(word) < len(generic) + 2:
+                is_filtered = True
+                break
+        if is_filtered:
+            continue
+
+        seen.add(key)
+        # YAKE 得分转权重（得分越低权重越高）
+        weight = max(0.1, round(1.0 / (score + 0.1), 4))
+        result.append({
+            "word": word,
+            "weight": weight,
+            "type": "phrase" if len(word) >= 4 else "word",
+            "score": round(score, 4)
+        })
+
+        if len(result) >= top_k:
+            break
+
+    # 按权重排序
+    result.sort(key=lambda x: x["weight"], reverse=True)
     return result
 
 

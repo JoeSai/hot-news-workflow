@@ -79,6 +79,8 @@ interface NewsItem {
 interface Keyword {
   word: string;
   weight: number;
+  type?: 'word' | 'phrase';  // 词或短语
+  score?: number;             // YAKE 得分（仅 phrase 模式）
 }
 ```
 

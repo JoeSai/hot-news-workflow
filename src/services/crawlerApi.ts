@@ -38,7 +38,7 @@ export interface Keyword {
 export async function extractKeywords(
   news: NewsItem[],
   topK: number = 50,
-  method: string = 'tfidf'
+  method: string = 'phrase'
 ): Promise<Keyword[]> {
   const response = await fetch(`${API_BASE}/keywords`, {
     method: 'POST',

@@ -12,7 +12,7 @@ interface KeywordExtractNodeProps {
 function KeywordExtractNode({ id, data }: KeywordExtractNodeProps) {
   const { nodes, edges, updateNodeData } = useWorkflowStore();
   const [topK, setTopK] = useState(data.topK || 50);
-  const [method, setMethod] = useState<'tfidf' | 'textrank'>(data.method || 'tfidf');
+  const [method, setMethod] = useState<'tfidf' | 'textrank' | 'phrase'>(data.method || 'phrase');
 
   // 从连线获取输入数据（而不是从全局 store）
   const inputNews = useMemo(() => {
@@ -108,9 +108,10 @@ function KeywordExtractNode({ id, data }: KeywordExtractNodeProps) {
           </label>
           <select
             value={method}
-            onChange={(e) => setMethod(e.target.value as 'tfidf' | 'textrank')}
+            onChange={(e) => setMethod(e.target.value as 'tfidf' | 'textrank' | 'phrase')}
             className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm"
           >
+            <option value="phrase">关键短语（推荐）</option>
             <option value="tfidf">TF-IDF（高频热词）</option>
             <option value="textrank">TextRank（核心关键词）</option>
           </select>
