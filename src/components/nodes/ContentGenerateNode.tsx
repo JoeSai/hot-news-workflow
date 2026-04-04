@@ -19,7 +19,7 @@ const CONTENT_STYLES = [
 function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
   const { nodes, edges, updateNodeData } = useWorkflowStore();
   const [style, setStyle] = useState(data.style || '科普向');
-  const [apiType, setApiType] = useState(data.apiType || 'deepseek');
+  const [apiType, setApiType] = useState(data.apiType || 'minimax');
   const [apiKey, setApiKey] = useState(data.apiKey || '');
   const [copied, setCopied] = useState('');
 
@@ -158,7 +158,10 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
             <label className="text-xs font-medium text-gray-600 mb-1 block">AI 提供商</label>
             <select
               value={apiType}
-              onChange={(e) => setApiType(e.target.value)}
+              onChange={(e) => {
+                setApiType(e.target.value);
+                updateNodeData(id, { apiType: e.target.value });
+              }}
               className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
               onClick={(e) => e.stopPropagation()}
             >
