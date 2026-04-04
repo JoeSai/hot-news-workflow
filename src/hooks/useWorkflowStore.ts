@@ -506,7 +506,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         await get().runNode(nodeId);
       }
 
-      // hotwordList 需要用户交互，runAll 时自动选择 TOP 5 关键词
+      // hotwordList 和 topicRecommend 需要用户交互，runAll 时自动选择 TOP 5
       if (node.type === 'hotwordList') {
         const currentState = get();
         const currentNodeData = currentState.nodes.find(n => n.id === nodeId)?.data as NodeData;
@@ -520,6 +520,29 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
               const sourceData = sourceNode.data as NodeData;
               const keywords = sourceData.keywords as Keyword[] || [];
               if (keywords.length > 0) {
+                const top5 = keywords.slice(0, 5);
+                get().updateNodeData(nodeId, { selectedKeywords: top5, outputType: 'keywords' });
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // v0.18-R3: topicRecommend 纳入 runAll，自动取 TOP 5 关键词
+      if (node.type === 'topicRecommend') {
+        const currentState = get();
+        const currentNodeData = currentState.nodes.find(n => n.id === nodeId)?.data as NodeData;
+        const selectedKws = currentNodeData?.selectedKeywords as Keyword[] || [];
+        if (selectedKws.length === 0) {
+          const incomingEdges = currentState.edges.filter(e => e.target === nodeId);
+          for (const edge of incomingEdges) {
+            const sourceNode = currentState.nodes.find(n => n.id === edge.source);
+            if (sourceNode) {
+              const sourceData = sourceNode.data as NodeData;
+              const keywords = sourceData.keywords as Keyword[] || [];
+              if (keywords.length > 0) {
+                // 自动取 TOP 5 关键词写入 selectedKeywords，供下游 contentGenerate 使用
                 const top5 = keywords.slice(0, 5);
                 get().updateNodeData(nodeId, { selectedKeywords: top5, outputType: 'keywords' });
                 break;

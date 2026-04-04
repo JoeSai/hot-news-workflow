@@ -123,8 +123,11 @@ function TopicRecommendNode({ id }: TopicRecommendNodeProps) {
 
   const handleRecommend = () => {
     if (!hasInput) return;
+    // v0.18-R1: 确认推荐后写入 selectedKeywords，供 runAll 流向 contentGenerate
+    const selected = recommendations.slice(0, 5).map(r => ({ word: r.word, weight: r.weight, type: r.type }));
     updateNodeData(id, {
       recommendations,
+      selectedKeywords: selected,
       outputType: 'keywords',
     });
   };
