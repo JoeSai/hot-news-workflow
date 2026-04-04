@@ -379,26 +379,21 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
             {/* 小红书预览模式 */}
             {showXhsPreview ? (
               <div className="bg-gradient-to-b from-pink-50 to-white rounded-lg p-4 border border-pink-200">
-                {/* 封面图占位 */}
                 <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-lg h-32 mb-3 flex items-center justify-center text-white text-opacity-70">
                   <span className="text-lg">📷 封面图</span>
                 </div>
-                {/* 标题 */}
                 <div className="text-base font-bold text-gray-800 mb-2 leading-tight">
                   {parsed.titles[0] || '点击选择标题'}
                 </div>
-                {/* 作者信息 */}
                 <div className="flex items-center gap-2 mb-3 text-xs text-gray-500">
                   <div className="w-6 h-6 bg-pink-400 rounded-full"></div>
                   <span>AI创作助手</span>
                   <span>·</span>
                   <span>刚刚</span>
                 </div>
-                {/* 正文 */}
                 <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-3">
                   {parsed.body}
                 </div>
-                {/* 标签 */}
                 <div className="flex flex-wrap gap-1 mb-3">
                   {parsed.tags.map((tag, i) => (
                     <span key={i} className="px-2 py-0.5 bg-pink-50 text-pink-500 rounded-full text-xs">
@@ -406,7 +401,6 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
                     </span>
                   ))}
                 </div>
-                {/* 操作按钮 */}
                 <div className="flex gap-2 pt-2 border-t border-pink-100">
                   <button
                     onClick={() => copyToClipboard(parsed.titles[0] || '', 'xhs-title')}
@@ -429,73 +423,66 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
                 </div>
               </div>
             ) : (
-              <>
-            {/* 标题 */}
-            {parsed.titles.length > 0 && (
-              <div>
-                <div className="text-xs text-gray-500 mb-1">标题备选</div>
-                <div className="space-y-1">
-                  {parsed.titles.map((t, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <span className="text-xs bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded">{i + 1}</span>
-                      <span className="text-sm text-gray-700 flex-1">{t}</span>
+              <div className="space-y-3">
+                {parsed.titles.length > 0 && (
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">标题备选</div>
+                    <div className="space-y-1">
+                      {parsed.titles.map((t, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <span className="text-xs bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded">{i + 1}</span>
+                          <span className="text-sm text-gray-700 flex-1">{t}</span>
+                          <button
+                            onClick={() => copyToClipboard(t, `title-${i}`)}
+                            className="text-xs text-gray-400 hover:text-gray-600"
+                          >
+                            {copied === `title-${i}` ? '✓' : '📋'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {parsed.body && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-500">正文</span>
                       <button
-                        onClick={() => copyToClipboard(t, `title-${i}`)}
+                        onClick={() => copyToClipboard(parsed.body, 'body')}
                         className="text-xs text-gray-400 hover:text-gray-600"
                       >
-                        {copied === `title-${i}` ? '✓' : '📋'}
+                        {copied === 'body' ? '✓ 已复制' : '📋 复制'}
                       </button>
                     </div>
-                  ))}
+                    <div className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded max-h-48 overflow-y-auto">
+                      {parsed.body}
+                    </div>
+                  </div>
+                )}
+                {parsed.tags.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-500">推荐标签</span>
+                      <button
+                        onClick={() => copyToClipboard(parsed.tags.join(' '), 'tags')}
+                        className="text-xs text-gray-400 hover:text-gray-600"
+                      >
+                        {copied === 'tags' ? '✓ 已复制' : '📋 复制'}
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {parsed.tags.map((tag, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-pink-100 text-pink-600 rounded text-xs">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="text-xs text-gray-400 bg-gray-50 px-3 py-2 rounded">
+                  ⚠️ 草稿仅供参考，请修改后手动发布
                 </div>
               </div>
-            )}
-
-            {/* 正文 */}
-            {parsed.body && (
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-gray-500">正文</span>
-                  <button
-                    onClick={() => copyToClipboard(parsed.body, 'body')}
-                    className="text-xs text-gray-400 hover:text-gray-600"
-                  >
-                    {copied === 'body' ? '✓ 已复制' : '📋 复制'}
-                  </button>
-                </div>
-                <div className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded max-h-48 overflow-y-auto">
-                  {parsed.body}
-                </div>
-              </div>
-            )}
-
-            {/* 标签 */}
-            {parsed.tags.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-gray-500">推荐标签</span>
-                  <button
-                    onClick={() => copyToClipboard(parsed.tags.join(' '), 'tags')}
-                    className="text-xs text-gray-400 hover:text-gray-600"
-                  >
-                    {copied === 'tags' ? '✓ 已复制' : '📋 复制'}
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {parsed.tags.map((tag, i) => (
-                    <span key={i} className="px-2 py-0.5 bg-pink-100 text-pink-600 rounded text-xs">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 警告 */}
-            <div className="text-xs text-gray-400 bg-gray-50 px-3 py-2 rounded">
-              ⚠️ 草稿仅供参考，请修改后手动发布
-            </div>
-          </>
             )}
           </div>
         )}
