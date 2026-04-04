@@ -81,6 +81,14 @@ export function getInputData<T extends NewsItem | Keyword>(
     if (inputType === 'keywords' && sourceData.keywords?.length) {
       return sourceData.keywords as T[];
     }
+    // 支持从热词列表节点读取选中的热词
+    if (inputType === 'selectedKeywords' && sourceData.selectedKeywords?.length) {
+      // 返回 Keyword 格式
+      return sourceData.selectedKeywords.map((word: string, i: number) => ({
+        word,
+        weight: 1 - (i * 0.01),  // 模拟权重
+      })) as T[];
+    }
   }
 
   return undefined;

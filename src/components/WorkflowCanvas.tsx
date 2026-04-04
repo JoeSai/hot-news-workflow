@@ -15,6 +15,7 @@ import KeywordExtractNode from './nodes/KeywordExtractNode';
 import WordCloudNode from './nodes/WordCloudNode';
 import NewsDetailNode from './nodes/NewsDetailNode';
 import HotwordListNode from './nodes/HotwordListNode';
+import ContentGenerateNode from './nodes/ContentGenerateNode';
 
 const nodeTypes = {
   hotspotCapture: HotspotCaptureNode,
@@ -22,6 +23,7 @@ const nodeTypes = {
   wordCloud: WordCloudNode,
   newsDetail: NewsDetailNode,
   hotwordList: HotwordListNode,
+  contentGenerate: ContentGenerateNode,
 };
 
 function WorkflowCanvas() {
@@ -103,6 +105,16 @@ function WorkflowCanvas() {
     addNode(newNode);
   }, [addNode]);
 
+  const addContentGenerateNode = useCallback(() => {
+    const newNode = {
+      id: getNextNodeId('content'),
+      type: 'contentGenerate',
+      position: { x: 1100, y: 300 },
+      data: {},
+    };
+    addNode(newNode);
+  }, [addNode]);
+
   return (
     <div className="w-full h-full">
       <ReactFlow
@@ -129,6 +141,8 @@ function WorkflowCanvas() {
                 return '#f43f5e';
               case 'hotwordList':
                 return '#8b5cf6';
+              case 'contentGenerate':
+                return '#6366f1';
               default:
                 return '#888';
             }
@@ -166,6 +180,14 @@ function WorkflowCanvas() {
             >
               <span>📝</span>
               <span>热词列表</span>
+            </button>
+            <button
+              type="button"
+              onClick={addContentGenerateNode}
+              className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors"
+            >
+              <span>✍️</span>
+              <span>AI 内容生成</span>
             </button>
 
             <div className="text-xs text-gray-500 mt-3 mb-1">可视化</div>

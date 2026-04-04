@@ -67,3 +67,29 @@ export async function extractKeywords(
   const data = await response.json();
   return data.keywords as Keyword[];
 }
+
+export interface GenerateContentParams {
+  keywords: string[];
+  newsTitles?: string[];
+  style?: string;
+  apiType?: string;
+  apiKey?: string;
+}
+
+export async function generateContent(params: GenerateContentParams): Promise<string> {
+  const response = await fetch(`${API_BASE}/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || '生成失败');
+  }
+  return data.draft as string;
+}

@@ -57,7 +57,7 @@ export interface WordCloudItem {
 }
 
 // 节点数据类型
-export type NodeDataType = 'news' | 'keywords' | 'wordcloud';
+export type NodeDataType = 'news' | 'keywords' | 'wordcloud' | 'selectedKeywords';
 
 // 节点运行时数据
 export interface NodeData extends Record<string, unknown> {
@@ -89,4 +89,14 @@ export interface NodeData extends Record<string, unknown> {
 
   // 热点详情节点
   newsDetailStatus?: 'idle' | 'running' | 'success' | 'error';
+
+  // 热词列表节点
+  selectedKeywords?: string[];
+
+  // 内容生成节点
+  draft?: string;
+  generateStatus?: 'idle' | 'running' | 'success' | 'error';
+  style?: string;
+  apiType?: string;
+  apiKey?: string;
 }

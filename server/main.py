@@ -14,6 +14,7 @@ from collections import Counter
 import jieba
 import jieba.analyse
 import yake
+import requests
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -236,6 +237,15 @@ class KeywordRequest(BaseModel):
     method: str = "phrase"  # tfidf / textrank / phrase
 
 
+class ContentGenerateRequest(BaseModel):
+    keywords: List[str]  # 选中的热词
+    news_titles: List[str] = []  # 相关新闻标题（可选，用于参考）
+    style: str = "科普向"  # 科普向 / 观点向 / 教程向 / 测评向
+    api_type: str = "deepseek"  # deepseek / openai / claude
+    api_key: Optional[str] = None
+    api_base: Optional[str] = None
+
+
 # 通用词过滤列表（新闻高频但对内容生成价值低）
 GENERIC_NEWS_TERMS = {
     # 国际/政治人物（太通用）
@@ -411,6 +421,166 @@ async def extract_keywords_api(request: KeywordRequest):
         "keywords": keywords,
         "count": len(keywords),
     }
+
+
+# 内容风格配置
+CONTENT_STYLES = {
+    "科普向": "以科普的角度，用通俗易懂的语言介绍这个话题，适合新手入门",
+    "观点向": "表达对这个话题的独特观点和看法，有态度有立场，引发讨论",
+    "教程向": "以教程的形式，手把手教读者了解/使用这个话题相关的技能或工具",
+    "测评向": "对比评测同类产品或服务，给出选购建议和使用体验",
+}
+
+# API 配置
+API_CONFIGS = {
+    "deepseek": {
+        "base_url": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat",
+        "default_key_env": "DEEPSEEK_API_KEY",
+    },
+    "openai": {
+        "base_url": "https://api.openai.com/v1",
+        "model": "gpt-4o-mini",
+        "default_key_env": "OPENAI_API_KEY",
+    },
+    "claude": {
+        "base_url": "https://api.anthropic.com/v1",
+        "model": "claude-3-haiku-20240307",
+        "default_key_env": "CLAUDE_API_KEY",
+    },
+}
+
+
+@app.post("/api/generate")
+async def generate_content(request: ContentGenerateRequest):
+    """
+    AI 内容生成接口
+    根据热词生成小红书风格内容草稿
+    """
+    try:
+        keywords_str = "、".join(request.keywords)
+        style_desc = CONTENT_STYLES.get(request.style, CONTENT_STYLES["科普向"])
+
+        # 构建新闻参考上下文
+        news_context = ""
+        if request.news_titles:
+            news_context = "\n".join([f"- {t}" for t in request.news_titles[:5]])
+            news_context = f"\n\n参考新闻标题：\n{news_context}"
+
+        # 构造 prompt
+        prompt = f"""你是一个专业的小红书科技博主，擅长写吸引人的AI科技内容。
+
+请根据以下热词生成一篇小红书风格的内容草稿：
+
+热词：{keywords_str}
+内容风格：{style_desc}
+{news_context}
+
+请生成以下内容：
+
+## 标题（3个备选）
+[标题1]
+[标题2]
+[标题3]
+
+## 正文
+[正文字数建议300-600字，分段清晰，带emoji，带适当话题标签]
+
+## 推荐标签（5-8个）
+[标签1] [标签2] [标签3] ...
+
+---
+⚠️ 注意：这是AI辅助生成的草稿，请根据实际情况修改后使用。</verbar>"""
+
+        # 获取 API 配置
+        api_config = API_CONFIGS.get(request.api_type, API_CONFIGS["deepseek"])
+
+        # 获取 API key
+        api_key = request.api_key or os.environ.get(api_config["default_key_env"], "")
+        if not api_key:
+            return {
+                "success": False,
+                "error": f"请配置 {request.api_type} API Key",
+                "draft": None,
+            }
+
+        # 调用 AI API
+        if request.api_type == "deepseek":
+            result = call_deepseek_api(
+                api_key,
+                api_config["base_url"],
+                api_config["model"],
+                prompt
+            )
+        elif request.api_type == "openai":
+            result = call_openai_api(
+                api_key,
+                api_config["base_url"],
+                api_config["model"],
+                prompt
+            )
+        else:
+            return {
+                "success": False,
+                "error": f"暂不支持 {request.api_type}",
+                "draft": None,
+            }
+
+        if result.get("error"):
+            return {
+                "success": False,
+                "error": result["error"],
+                "draft": None,
+            }
+
+        return {
+            "success": True,
+            "draft": result.get("content", ""),
+            "model": api_config["model"],
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "draft": None,
+        }
+
+
+def call_deepseek_api(api_key: str, base_url: str, model: str, prompt: str) -> dict:
+    """调用 DeepSeek API"""
+    try:
+        url = f"{base_url}/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        }
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.7,
+            "max_tokens": 2000,
+        }
+
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        response.raise_for_status()
+
+        data = response.json()
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+        return {"content": content}
+
+    except requests.exceptions.Timeout:
+        return {"error": "API 请求超时，请重试"}
+    except requests.exceptions.RequestException as e:
+        return {"error": f"API 请求失败: {str(e)}"}
+    except Exception as e:
+        return {"error": f"生成失败: {str(e)}"}
+
+
+def call_openai_api(api_key: str, base_url: str, model: str, prompt: str) -> dict:
+    """调用 OpenAI API"""
+    return call_deepseek_api(api_key, base_url, model, prompt)  # 接口格式相同
 
 
 @app.get("/api/status")

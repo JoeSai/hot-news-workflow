@@ -9,8 +9,8 @@ interface HotwordListNodeProps {
 }
 
 function HotwordListNode({ id, data }: HotwordListNodeProps) {
-  const { nodes, edges } = useWorkflowStore();
-  const [selectedWords, setSelectedWords] = useState<Set<string>>(new Set());
+  const { nodes, edges, updateNodeData } = useWorkflowStore();
+  const [selectedWords, setSelectedWords] = useState<Set<string>>(new Set(data.selectedKeywords || []));
   const [copied, setCopied] = useState(false);
 
   // 从连线获取输入数据（从关键词提取节点传来）
@@ -29,14 +29,19 @@ function HotwordListNode({ id, data }: HotwordListNodeProps) {
       newSet.add(word);
     }
     setSelectedWords(newSet);
+    // 同步到节点数据，供下游节点使用
+    updateNodeData(id, { selectedKeywords: Array.from(newSet), outputType: 'keywords' });
   };
 
   const selectAll = () => {
-    setSelectedWords(new Set(inputKeywords.map(k => k.word)));
+    const allWords = new Set(inputKeywords.map(k => k.word));
+    setSelectedWords(allWords);
+    updateNodeData(id, { selectedKeywords: Array.from(allWords), outputType: 'keywords' });
   };
 
   const clearSelection = () => {
     setSelectedWords(new Set());
+    updateNodeData(id, { selectedKeywords: [], outputType: 'keywords' });
   };
 
   const copySelected = async () => {
