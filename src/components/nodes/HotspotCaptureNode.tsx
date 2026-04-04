@@ -17,12 +17,18 @@ const PLATFORMS = [
   // 热搜榜单
   { id: 'weibo', label: '微博热搜', color: '#ffa500', category: 'hot' },
   { id: 'zhihu', label: '知乎热榜', color: '#0084ff', category: 'hot' },
+  // AI 垂直平台
+  { id: '36kr', label: '36氪', color: '#6c5ce7', category: 'ai' },
+  { id: 'liangzi', label: '量子位', color: '#00b894', category: 'ai' },
+  { id: 'jiqizhixin', label: '机器之心', color: '#e17055', category: 'ai' },
+  { id: 'hackernews', label: 'HackerNews', color: '#ff6b6b', category: 'ai' },
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
   news: '新闻媒体',
   tech: '科技资讯',
   hot: '热搜榜单',
+  ai: 'AI垂直',
 };
 
 interface HotspotCaptureNodeProps {

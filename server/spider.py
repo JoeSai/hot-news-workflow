@@ -1114,6 +1114,246 @@ class ToutiaoSpider(BaseSpider):
             }
 
 
+# ==================== AI 垂直平台爬虫 ====================
+
+class Spider36Kr(BaseSpider):
+    """36氪 AI频道"""
+    source_name = "36氪"
+
+    def get_news_list(self, limit: int = 20) -> List[Dict]:
+        """获取36氪AI相关文章"""
+        try:
+            url = "https://36kr.com/api/search/articles?query=AI&type=article"
+            response = self.request(url=url, timeout=15)
+            data = response.json()
+
+            items = data.get("data", {}).get("items", [])
+            result = []
+            for item in items[:limit]:
+                title = item.get("title", "")
+                if not title:
+                    continue
+                result.append({
+                    "title": title,
+                    "url": f"https://36kr.com{item.get('path', '')}",
+                    "img_url": item.get("cover", ""),
+                    "pub_time": item.get("published_at", "")[:10] if item.get("published_at") else datetime.now().strftime("%Y-%m-%d"),
+                    "source": self.source_name,
+                    "category": "AI科技",
+                    "channel": "36氪AI",
+                })
+            return result
+        except Exception as e:
+            print(f"36氪获取失败: {e}")
+            return []
+
+    def get_news_info(self, item: Dict, category: str = None) -> Optional[Dict]:
+        """获取36氪文章详情"""
+        try:
+            response = self.request(url=item["url"], timeout=10)
+            response.encoding = "utf-8"
+            html = etree.HTML(response.text)
+
+            xpath_rules = {
+                "paragraphs": '//*[@class="article-content"]//p | //div[@class="content-body"]//p',
+                "title": '//h1//text() | //title/text()'
+            }
+            article_info, img_list = self.extract_article_content(html, xpath_rules)
+            return {
+                "title": item["title"],
+                "url": item["url"],
+                "cover_url": item.get("img_url", ""),
+                "pub_time": item.get("pub_time", ""),
+                "article_info": article_info or f"36氪文章: {item['title']}",
+                "img_list": img_list,
+                "category": "AI科技",
+                "source": self.source_name,
+            }
+        except Exception as e:
+            return {
+                "title": item["title"],
+                "url": item["url"],
+                "article_info": f"36氪文章: {item['title']}",
+                "source": self.source_name,
+            }
+
+
+class LiangziSpider(BaseSpider):
+    """量子位 - AI科技"""
+    source_name = "量子位"
+
+    def get_news_list(self, limit: int = 20) -> List[Dict]:
+        """获取量子位AI文章"""
+        try:
+            url = "https://www.qbitai.com/api/search?q=AI&limit=20"
+            response = self.request(url=url, timeout=15)
+            data = response.json()
+
+            items = data.get("data", [])
+            result = []
+            for item in items[:limit]:
+                title = item.get("title", "") or item.get("news_title", "")
+                if not title:
+                    continue
+                result.append({
+                    "title": title,
+                    "url": item.get("url", "") or item.get("news_url", ""),
+                    "img_url": item.get("img_url", ""),
+                    "pub_time": item.get("publish_time", "")[:10] if item.get("publish_time") else datetime.now().strftime("%Y-%m-%d"),
+                    "source": self.source_name,
+                    "category": "AI科技",
+                    "channel": "量子位",
+                })
+            return result
+        except Exception as e:
+            print(f"量子位获取失败: {e}")
+            return []
+
+    def get_news_info(self, item: Dict, category: str = None) -> Optional[Dict]:
+        """获取量子位文章详情"""
+        try:
+            response = self.request(url=item["url"], timeout=10)
+            response.encoding = "utf-8"
+            html = etree.HTML(response.text)
+            xpath_rules = {
+                "paragraphs": '//article//p | //*[@class="article-content"]//p',
+                "title": '//h1//text() | //title/text()'
+            }
+            article_info, img_list = self.extract_article_content(html, xpath_rules)
+            return {
+                "title": item["title"],
+                "url": item["url"],
+                "cover_url": item.get("img_url", ""),
+                "pub_time": item.get("pub_time", ""),
+                "article_info": article_info or f"量子位文章: {item['title']}",
+                "img_list": img_list,
+                "category": "AI科技",
+                "source": self.source_name,
+            }
+        except Exception as e:
+            return {
+                "title": item["title"],
+                "url": item["url"],
+                "article_info": f"量子位文章: {item['title']}",
+                "source": self.source_name,
+            }
+
+
+class JiQiXinSpider(BaseSpider):
+    """机器之心"""
+    source_name = "机器之心"
+
+    def get_news_list(self, limit: int = 20) -> List[Dict]:
+        """获取机器之心AI文章"""
+        try:
+            url = "https://www.jiqizhixin.com/api/articles?tag=AI&limit=20"
+            response = self.request(url=url, timeout=15)
+            data = response.json()
+
+            items = data.get("data", [])
+            result = []
+            for item in items[:limit]:
+                title = item.get("title", "")
+                if not title:
+                    continue
+                result.append({
+                    "title": title,
+                    "url": f"https://www.jiqizhixin.com/articles/{item.get('id', '')}",
+                    "img_url": item.get("cover_image", ""),
+                    "pub_time": item.get("published_at", "")[:10] if item.get("published_at") else datetime.now().strftime("%Y-%m-%d"),
+                    "source": self.source_name,
+                    "category": "AI科技",
+                    "channel": "机器之心",
+                })
+            return result
+        except Exception as e:
+            print(f"机器之心获取失败: {e}")
+            return []
+
+    def get_news_info(self, item: Dict, category: str = None) -> Optional[Dict]:
+        """获取机器之心文章详情"""
+        try:
+            response = self.request(url=item["url"], timeout=10)
+            response.encoding = "utf-8"
+            html = etree.HTML(response.text)
+            xpath_rules = {
+                "paragraphs": '//article//p | //*[@class="article-content"]//p',
+                "title": '//h1//text() | //title/text()'
+            }
+            article_info, img_list = self.extract_article_content(html, xpath_rules)
+            return {
+                "title": item["title"],
+                "url": item["url"],
+                "cover_url": item.get("img_url", ""),
+                "pub_time": item.get("pub_time", ""),
+                "article_info": article_info or f"机器之心文章: {item['title']}",
+                "img_list": img_list,
+                "category": "AI科技",
+                "source": self.source_name,
+            }
+        except Exception as e:
+            return {
+                "title": item["title"],
+                "url": item["url"],
+                "article_info": f"机器之心文章: {item['title']}",
+                "source": self.source_name,
+            }
+
+
+class HackerNewsSpider(BaseSpider):
+    """Hacker News"""
+    source_name = "Hacker News"
+
+    def get_news_list(self, limit: int = 20) -> List[Dict]:
+        """获取Hacker News热门讨论"""
+        try:
+            # 获取 top stories
+            url = "https://hacker-news.firebaseio.com/v0/topstories.json"
+            response = self.request(url=url, timeout=15)
+            story_ids = response.json()[:limit]
+
+            result = []
+            for story_id in story_ids:
+                try:
+                    story_url = f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json"
+                    story_response = self.request(url=story_url, timeout=10)
+                    story = story_response.json()
+
+                    if story and story.get("title"):
+                        result.append({
+                            "title": story["title"],
+                            "url": story.get("url", f"https://news.ycombinator.com/item?id={story_id}"),
+                            "img_url": "",
+                            "pub_time": datetime.fromtimestamp(story.get("time", 0)).strftime("%Y-%m-%d") if story.get("time") else datetime.now().strftime("%Y-%m-%d"),
+                            "source": self.source_name,
+                            "category": "科技",
+                            "channel": "HackerNews",
+                            "hot_value": story.get("score", 0),
+                        })
+                        if len(result) >= limit:
+                            break
+                except Exception:
+                    continue
+
+            return result
+        except Exception as e:
+            print(f"Hacker News获取失败: {e}")
+            return []
+
+    def get_news_info(self, item: Dict, category: str = None) -> Optional[Dict]:
+        """Hacker News 详情"""
+        return {
+            "title": item["title"],
+            "url": item["url"],
+            "cover_url": "",
+            "pub_time": item.get("pub_time", ""),
+            "article_info": f"Hacker News: {item['title']}\n链接: {item['url']}",
+            "img_list": [],
+            "category": "科技",
+            "source": self.source_name,
+        }
+
+
 def get_spider(platform: str):
     """获取爬虫实例"""
     spiders = {
@@ -1127,6 +1367,11 @@ def get_spider(platform: str):
         "weibo": WeiboSpider(),
         "zhihu": ZhiHuSpider(),
         "toutiao": ToutiaoSpider(),
+        # AI 垂直平台
+        "36kr": Spider36Kr(),
+        "liangzi": LiangziSpider(),
+        "jiqizhixin": JiQiXinSpider(),
+        "hackernews": HackerNewsSpider(),
     }
     return spiders.get(platform.lower())
 
