@@ -21,6 +21,7 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
   const [style, setStyle] = useState(data.style || '科普向');
   const [apiType, setApiType] = useState(data.apiType || 'minimax');
   const [apiKey, setApiKey] = useState(data.apiKey || '');
+  const [useServerKey, setUseServerKey] = useState(data.useServerKey || false);
   const [copied, setCopied] = useState('');
 
   // 组件挂载时清除旧错误状态
@@ -41,9 +42,12 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
     return news || [];
   }, [id, nodes, edges]);
 
-  // 用户选中的热词（优先从节点数据读取，其次从连线获取）
-  const selectedKeywords = data.selectedKeywords ||
-    (getInputData<Keyword>(id, nodes, edges, 'selectedKeywords')?.map(k => k.word) || []);
+  // 用户选中的热词（优先从连线获取完整 Keyword 对象，其次从节点数据）
+  const selectedKeywordsFromEdge = getInputData<Keyword>(id, nodes, edges, 'selectedKeywords');
+  // data.selectedKeywords 是 string[]（只有词），edge 传来的是 Keyword[]（有 sourceNews）
+  const selectedKeywords: Keyword[] = selectedKeywordsFromEdge?.length
+    ? selectedKeywordsFromEdge
+    : (data.selectedKeywords as string[] || []).map(w => ({ word: w, weight: 1.0 }));
   const hasInput = inputKeywords.length > 0 || selectedKeywords.length > 0;
 
   const handleGenerate = async (e: React.MouseEvent) => {
@@ -55,18 +59,19 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
       return;
     }
 
-    if (!apiKey.trim()) {
-      updateNodeData(id, { generateStatus: 'error', error: '请输入 API Key' });
+    if (!useServerKey && !apiKey.trim()) {
+      updateNodeData(id, { generateStatus: 'error', error: '请输入 API Key，或勾选"使用服务端 Key"' });
       return;
     }
 
     // Debug log
-    console.log('Generating with:', { apiType, apiKey: apiKey.substring(0, 10) + '...' });
+    const keyToLog = useServerKey ? '(server env)' : apiKey.substring(0, 10) + '...';
+    console.log('Generating with:', { apiType, apiKey: keyToLog });
 
     updateNodeData(id, { generateStatus: 'running' });
 
     try {
-      const draft = await generateContent({
+      const result = await generateContent({
         keywords: selectedKeywords,
         newsTitles: inputNews.slice(0, 5).map(n => n.title),
         style,
@@ -76,7 +81,10 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
 
       updateNodeData(id, {
         generateStatus: 'success',
-        draft,
+        draft: result.draft,
+        draftTitles: result.titles,
+        draftBody: result.body,
+        draftTags: result.tags,
         outputType: 'draft'
       });
     } catch (error) {
@@ -139,7 +147,12 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
   };
 
   const draft = data.draft as string | undefined;
-  const parsed = draft ? parseDraft(draft) : null;
+  // 优先使用后端返回的结构化数据，降级到正则解析
+  const parsed = draft ? {
+    titles: (data.draftTitles as string[] | undefined)?.length ? data.draftTitles as string[] : parseDraft(draft).titles,
+    body: (data.draftBody as string | undefined) || parseDraft(draft).body,
+    tags: (data.draftTags as string[] | undefined)?.length ? data.draftTags as string[] : parseDraft(draft).tags,
+  } : null;
 
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-200 w-[480px]">
@@ -201,18 +214,39 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
 
         {/* API Key */}
         <div>
-          <label className="text-xs font-medium text-gray-600 mb-1 block">API Key</label>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => {
-              setApiKey(e.target.value);
-              updateNodeData(id, { apiKey: e.target.value });
-            }}
-            placeholder="输入 API Key"
-            className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-medium text-gray-600">API Key</label>
+            <label className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useServerKey}
+                onChange={(e) => {
+                  setUseServerKey(e.target.checked);
+                  updateNodeData(id, { useServerKey: e.target.checked });
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="accent-indigo-500"
+              />
+              使用服务端 Key
+            </label>
+          </div>
+          {useServerKey ? (
+            <div className="px-3 py-1.5 bg-gray-100 text-gray-500 text-xs rounded border border-gray-200">
+              将使用服务端环境变量配置的 API Key
+            </div>
+          ) : (
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => {
+                setApiKey(e.target.value);
+                updateNodeData(id, { apiKey: e.target.value });
+              }}
+              placeholder="输入 API Key"
+              className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
         </div>
 
         {/* 生成按钮 */}

@@ -19,6 +19,8 @@ export interface NewsItem {
 export interface Keyword {
   word: string;
   weight: number;
+  type?: 'word' | 'phrase';
+  sourceNews?: string[];  // 该关键词来源的新闻标题
 }
 
 // 类别节点（用于图谱）

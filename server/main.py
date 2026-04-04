@@ -16,16 +16,21 @@ import jieba.analyse
 import yake
 import requests
 
+# 加载 AI 赛道用户词典（提升专有名词识别准确性）
+_USER_DICT = Path(__file__).parent / "ai_dict.txt"
+if _USER_DICT.exists():
+    jieba.load_userdict(str(_USER_DICT))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 app = FastAPI(title="Hot News Workflow API")
 
-# CORS
+# CORS - 允许所有本地开发端口
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176", "http://localhost:5177", "http://127.0.0.1:5173", "http://127.0.0.1:5174", "http://127.0.0.1:5175", "http://127.0.0.1:5176", "http://127.0.0.1:5177"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -238,7 +243,7 @@ class KeywordRequest(BaseModel):
 
 
 class ContentGenerateRequest(BaseModel):
-    keywords: List[str]  # 选中的热词
+    keywords: List[dict]  # 选中的热词（包含 source_news）
     news_titles: List[str] = []  # 相关新闻标题（可选，用于参考）
     style: str = "科普向"  # 科普向 / 观点向 / 教程向 / 测评向
     api_type: str = "deepseek"  # deepseek / openai / claude
@@ -335,6 +340,50 @@ def extract_keywords(news: List[NewsItem], top_k: int = 50, method: str = "phras
     return unique_result[:top_k]
 
 
+def preprocess_for_yake(text: str) -> str:
+    """
+    jieba 分词预处理，解决 YAKE 中文分词差的问题
+
+    思路：用 jieba 做中文分词（它擅长这个），然后用空格拼接分词结果
+    喂给 YAKE（它擅长多词短语排序和去重）。
+    中文标点替换为句号，作为 YAKE 的句子边界，防止跨标点组合短语。
+    """
+    words = jieba.lcut(text)
+    segments = []
+    for w in words:
+        w = w.strip()
+        if not w:
+            continue
+        # 中英文标点 → 句子边界（YAKE 用句号分割短语范围）
+        if re.match(r'^[，。？！、；：""''【】《》（）\[\]{}]+…—\-·,.?!;:%]+\$', w):
+            segments.append('.')
+        else:
+            segments.append(w)
+    processed_text = ' '.join(segments)
+    processed_text = re.sub(r'\s+', ' ', processed_text).strip()
+    return processed_text
+
+
+def is_valid_keyphrase(word: str) -> bool:
+    """
+    过滤规则：过滤低质量短语
+    """
+    # 1. 过滤纯数字/版本号
+    if re.match(r'^[\d.%]+\$', word):
+        return False
+    # 2. 过滤过长的短语（>15字大概率是垃圾）
+    if len(word) > 15:
+        return False
+    # 3. 过滤以停用词开头/结尾的短语
+    for sw in ['的', '了', '是', '在', '将', '其', '把', '被']:
+        if word.startswith(sw) or word.endswith(sw):
+            return False
+    # 4. 过滤包含残留标点的短语（标点粘连是 YAKE 提取失败的特征）
+    if re.search(r'[，。？！、；：""''【】《》（）\[\]{}]', word):
+        return False
+    return True
+
+
 def extract_phrases_yake(titles: List[str], top_k: int = 50) -> List[dict]:
     """
     使用 YAKE 提取关键短语
@@ -351,24 +400,24 @@ def extract_phrases_yake(titles: List[str], top_k: int = 50) -> List[dict]:
         features=None,
     )
 
-    # 对每条标题单独提取，再合并
-    all_keywords = []
+    # 对每条标题单独提取，再合并（记录每个词的来源标题）
+    # 格式：(word, score, source_titles_set)
+    all_keywords: list[tuple[str, float, set[str]]] = []
     for title in titles:
         if not title:
             continue
-        # YAKE 对短文本效果更好
-        keywords = kw_extractor.extract_keywords(title)
-        all_keywords.extend(keywords)
+        # jieba 预处理，解决 YAKE 中文分词差的问题
+        processed_title = preprocess_for_yake(title)
+        keywords = kw_extractor.extract_keywords(processed_title)
+        for word, score in keywords:
+            all_keywords.append((word.strip(), score, {title}))
 
     # 按得分排序（YAKE 得分越低越好）
     all_keywords.sort(key=lambda x: x[1])
 
-    # 过滤并去重
-    seen = set()
-    result = []
-    for word, score in all_keywords:
-        word = word.strip()
-
+    # 过滤并去重（同时收集来源标题）
+    seen: dict[str, tuple[float, set[str]]] = {}
+    for word, score, sources in all_keywords:
         # 基本过滤
         if len(word) < 2:
             continue
@@ -376,11 +425,11 @@ def extract_phrases_yake(titles: List[str], top_k: int = 50) -> List[dict]:
             continue
         if word in GENERIC_NEWS_TERMS:
             continue
+        if not is_valid_keyphrase(word):
+            continue
 
         # 简短去重
         key = word[:3] if len(word) >= 3 else word
-        if key in seen:
-            continue
 
         # 过滤包含通用词的短语
         is_filtered = False
@@ -391,22 +440,33 @@ def extract_phrases_yake(titles: List[str], top_k: int = 50) -> List[dict]:
         if is_filtered:
             continue
 
-        seen.add(key)
+        if key in seen:
+            # 合并来源标题
+            old_score, old_sources = seen[key]
+            if score < old_score:
+                seen[key] = (score, old_sources | sources)
+            else:
+                seen[key] = (old_score, old_sources | sources)
+        else:
+            seen[key] = (score, sources)
+
+    # 构建结果
+    result = []
+    for key, (score, sources) in seen.items():
+        word = key
         # YAKE 得分转权重（得分越低权重越高）
         weight = max(0.1, round(1.0 / (score + 0.1), 4))
         result.append({
             "word": word,
             "weight": weight,
             "type": "phrase" if len(word) >= 4 else "word",
-            "score": round(score, 4)
+            "score": round(score, 4),
+            "source_news": list(sources)[:5],
         })
-
-        if len(result) >= top_k:
-            break
 
     # 按权重排序
     result.sort(key=lambda x: x["weight"], reverse=True)
-    return result
+    return result[:top_k]
 
 
 @app.post("/api/keywords")
@@ -475,39 +535,49 @@ async def generate_content(request: ContentGenerateRequest):
     # Debug log
     print(f"[DEBUG] Received request: api_type={request.api_type}, has_key={'Yes' if request.api_key else 'No'}")
     try:
-        keywords_str = "、".join(request.keywords)
+        keywords_str = "、".join([k["word"] if isinstance(k, dict) else k for k in request.keywords])
         style_desc = CONTENT_STYLES.get(request.style, CONTENT_STYLES["科普向"])
 
-        # 构建新闻参考上下文
+        # 构建新闻参考上下文：优先用关键词的来源新闻，其次用 news_titles
         news_context = ""
-        if request.news_titles:
+        # 从关键词的 source_news 收集相关热点
+        relevant_news: set[str] = set()
+        for k in request.keywords:
+            if isinstance(k, dict) and k.get("source_news"):
+                for sn in k["source_news"]:
+                    relevant_news.add(sn)
+        if relevant_news:
+            news_lines = list(relevant_news)[:5]
+            news_context = "\n".join([f"- {t}" for t in news_lines])
+            news_context = f"\n\n🔥 热点事件（请围绕这些事件生成内容）：\n{news_context}"
+        elif request.news_titles:
             news_context = "\n".join([f"- {t}" for t in request.news_titles[:5]])
             news_context = f"\n\n参考新闻标题：\n{news_context}"
 
         # 构造 prompt
         prompt = f"""你是一个专业的小红书科技博主，擅长写吸引人的AI科技内容。
 
-请根据以下热词生成一篇小红书风格的内容草稿：
+请根据以下热词和对应的热点事件生成一篇小红书风格的内容草稿：
 
 热词：{keywords_str}
 内容风格：{style_desc}
 {news_context}
 
-请生成以下内容：
+请严格按照以下格式生成内容（不要输出任何说明文字，直接生成草稿）：
 
 ## 标题（3个备选）
-[标题1]
-[标题2]
-[标题3]
+1. [这里写第一个标题]
+2. [这里写第二个标题]
+3. [这里写第三个标题]
 
 ## 正文
-[正文字数建议300-600字，分段清晰，带emoji，带适当话题标签]
+[这里写正文内容，300-600字，分段清晰，带emoji，适当添加话题标签]
 
-## 推荐标签（5-8个）
-[标签1] [标签2] [标签3] ...
+## 推荐标签
+[标签1] [标签2] [标签3] [标签4] [标签5]
 
 ---
-⚠️ 注意：这是AI辅助生成的草稿，请根据实际情况修改后使用。</verbar>"""
+⚠️ 注意：这是AI辅助生成的草稿，请根据实际情况修改后使用。"""
 
         # 获取 API 配置
         api_config = API_CONFIGS.get(request.api_type, API_CONFIGS["deepseek"])
@@ -540,6 +610,8 @@ async def generate_content(request: ContentGenerateRequest):
             "success": True,
             "draft": result.get("content", ""),
             "model": api_config["model"],
+            # 新增：结构化数据，消除前端正则解析
+            **parse_draft_structured(result.get("content", "")),
         }
 
     except Exception as e:
@@ -548,6 +620,51 @@ async def generate_content(request: ContentGenerateRequest):
             "error": str(e),
             "draft": None,
         }
+
+
+def parse_draft_structured(draft: str) -> dict:
+    """解析草稿文本为结构化数据"""
+    if not draft:
+        return {"titles": [], "body": "", "tags": []}
+
+    titles = []
+    # 匹配 "1. 标题" 或 "标题1" 格式
+    title_section_match = draft.find("## 标题")
+    if title_section_match >= 0:
+        title_section = draft[title_section_match:]
+        # 匹配 "1. xxx" 或 "2. xxx" 格式
+        for line in title_section.split("\n"):
+            line = line.strip()
+            m = re.match(r"^\d+[.、]\s*(.+)", line)
+            if m:
+                titles.append(m.group(1).strip())
+            elif line.startswith("#"):
+                continue  # 跳过 markdown 标题
+            elif line and not line.startswith("[") and len(line) < 40 and len(line) > 3:
+                # 可能是无序号的标题
+                if not any(c in line for c in "[]（）【】()"):
+                    titles.append(line.strip())
+    # 去重
+    titles = list(dict.fromkeys(titles))[:3]
+
+    body = ""
+    body_match = re.search(r"## 正文\n([\s\S]+?)(?=##|\Z)", draft)
+    if body_match:
+        body = body_match.group(1).strip()
+
+    tags = []
+    tag_match = re.search(r"## 推荐标签\n?([\s\S]+?)$", draft)
+    if tag_match:
+        tag_section = tag_match.group(1)
+        # 匹配 [标签] 或 #标签 或纯词语
+        for m in re.findall(r"\[([^\]\n]+)\]|#([^\s#\n]+)|([^\s#\n\[\]]+)", tag_section):
+            tag = m[0] or m[1] or m[2]
+            tag = tag.strip()
+            if tag and len(tag) > 1 and len(tag) < 15 and not re.match(r"^[0-9.]+$", tag):
+                tags.append(tag)
+    tags = list(dict.fromkeys(tags))[:8]
+
+    return {"titles": titles, "body": body, "tags": tags}
 
 
 def call_openai_compatible_api(api_key: str, base_url: str, model: str, prompt: str) -> dict:

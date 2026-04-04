@@ -6,7 +6,7 @@ import { runCrawler, parseHotNewsFile, type PlatformResult } from '../../service
 const PLATFORMS = [
   // 新闻平台
   { id: 'wangyi', label: '网易新闻', color: '#e54343', category: 'news' },
-  { id: 'pengpai', label: '澎湃新闻', color: '#1e8c2f', category: 'news' },
+  { id: 'pengpai', label: '澎湃新闻', color: '#1e8c2f', category: 'news', disabled: true },
   { id: 'tencent', label: '腾讯新闻', color: '#2a7fff', category: 'news' },
   { id: 'souhu', label: '搜狐新闻', color: '#ff7f50', category: 'news' },
   { id: 'xinlang', label: '新浪国际', color: '#ff0000', category: 'news' },
@@ -15,12 +15,12 @@ const PLATFORMS = [
   { id: 'ithome', label: 'IT之家', color: '#4fc3f7', category: 'tech' },
   { id: 'toutiao', label: '今日头条', color: '#000000', category: 'tech' },
   // 热搜榜单
-  { id: 'weibo', label: '微博热搜', color: '#ffa500', category: 'hot' },
+  { id: 'weibo', label: '微博热搜', color: '#ffa500', category: 'hot', disabled: true },
   { id: 'zhihu', label: '知乎热榜', color: '#0084ff', category: 'hot' },
   // AI 垂直平台
-  { id: '36kr', label: '36氪', color: '#6c5ce7', category: 'ai' },
-  { id: 'liangzi', label: '量子位', color: '#00b894', category: 'ai' },
-  { id: 'jiqizhixin', label: '机器之心', color: '#e17055', category: 'ai' },
+  { id: '36kr', label: '36氪', color: '#6c5ce7', category: 'ai', disabled: true },
+  { id: 'liangzi', label: '量子位', color: '#00b894', category: 'ai', disabled: true },
+  { id: 'jiqizhixin', label: '机器之心', color: '#e17055', category: 'ai', disabled: true },
   { id: 'hackernews', label: 'HackerNews', color: '#ff6b6b', category: 'ai' },
 ];
 
@@ -169,19 +169,23 @@ function HotspotCaptureNode({ id, data }: HotspotCaptureNodeProps) {
               {platforms.map((p) => (
                 <label
                   key={p.id}
-                  className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 px-2 py-1 rounded"
+                  className={`flex items-center gap-2 px-2 py-1 rounded ${p.disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-gray-50'}`}
                 >
                   <input
                     type="checkbox"
                     checked={selectedPlatforms.includes(p.id)}
-                    onChange={() => handleToggle(p.id)}
+                    onChange={() => !p.disabled && handleToggle(p.id)}
+                    disabled={p.disabled}
                     className="w-4 h-4 rounded border-gray-300"
                   />
                   <span
                     className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: p.color }}
+                    style={{ backgroundColor: p.disabled ? '#9ca3af' : p.color }}
                   />
-                  <span className="text-sm text-gray-700">{p.label}</span>
+                  <span className={`text-sm ${p.disabled ? 'text-gray-400' : 'text-gray-700'}`}>
+                    {p.label}
+                    {p.disabled && <span className="text-xs text-gray-400 ml-1">(维护中)</span>}
+                  </span>
                 </label>
               ))}
             </div>

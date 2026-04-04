@@ -384,12 +384,12 @@ class TengXunSpider(BaseSpider):
                 )
 
                 items = response.json().get("data", [])
-                for item in items[:limit // 2]:
+                for item in items:
                     # 跳过子项目视频等
                     if item.get("sub_item"):
                         continue
                     # 跳过视频类型
-                    if item.get("articletype") == "525":
+                    if str(item.get("articletype")) == "525":
                         continue
 
                     pic_info = item.get("pic_info", {})
@@ -611,7 +611,7 @@ class ITHomeSpider(BaseSpider):
         try:
             url = "https://www.ithome.com/"
             response = self.request(url=url)
-            response.encoding = 'utf-8'  # 强制 UTF-8
+            response.encoding = response.apparent_encoding
             html = etree.HTML(response.text)
 
             news_items = html.xpath('//*[@id="nnews"]/div[3]/ul/li')
@@ -787,37 +787,39 @@ class ZhongGuoRiBaoSpider(BaseSpider):
 
     def get_news_list(self, limit=20) -> List[Dict]:
         try:
-            url = "https://www.chinadaily.com.cn/china/"
+            url = "https://www.chinadaily.com.cn/"
             response = self.request(url=url)
             response.encoding = response.apparent_encoding
             html = etree.HTML(response.text)
 
-            news_items = html.xpath('//div[@class="mb_10"]//a')[:limit]
-
+            # 提取 /a/YYYYMMDD/ 模式的文章链接
+            all_links = html.xpath(f'//a[contains(@href, "/a/")]/@href')
+            seen = set()
             result = []
-            for item in news_items:
-                title = item.xpath(".//text()")
-                title = "".join([t.strip() for t in title if t.strip()])
-
-                if not title or len(title) < 5:
+            for link in all_links:
+                if link in seen:
                     continue
-
-                link = item.get("href", "")
-                if not link:
+                if not any(pattern in link for pattern in ['chinadaily.com.cn/a/20']):
                     continue
-
-                if not link.startswith("http"):
-                    link = "https://www.chinadaily.com.cn" + link
-
+                seen.add(link)
+                # 从 URL 中提取日期
+                import re
+                date_match = re.search(r'/(\d{8})/', link)
+                date_str = f"20{date_match.group(1)[:6]}" if date_match else datetime.now().strftime("%Y-%m-%d")
+                if len(date_str) == 8:
+                    date_str = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                full_link = link if link.startswith('http') else 'https://www.chinadaily.com.cn' + link
                 result.append({
-                    "title": title,
-                    "url": link,
+                    "title": "",
+                    "url": full_link,
                     "img_url": "",
-                    "pub_time": datetime.now().strftime("%Y-%m-%d"),
+                    "pub_time": date_str,
                     "source": self.source_name,
                     "category": "时政",
-                    "channel": "时政要闻"
+                    "channel": "中国日报"
                 })
+                if len(result) >= limit:
+                    break
 
             return result
         except Exception as e:
@@ -1117,30 +1119,30 @@ class ToutiaoSpider(BaseSpider):
 # ==================== AI 垂直平台爬虫 ====================
 
 class Spider36Kr(BaseSpider):
-    """36氪 AI频道"""
+    """36氪 RSS"""
     source_name = "36氪"
 
     def get_news_list(self, limit: int = 20) -> List[Dict]:
-        """获取36氪AI相关文章"""
+        """获取36氪最新文章（RSS 方式）"""
+        import xml.etree.ElementTree as ET
         try:
-            url = "https://36kr.com/api/search/articles?query=AI&type=article"
-            response = self.request(url=url, timeout=15)
-            data = response.json()
-
-            items = data.get("data", {}).get("items", [])
+            response = self.request(url="https://36kr.com/feed", timeout=15)
+            root = ET.fromstring(response.text)
+            channel = root.find('channel')
+            items = channel.findall('item')
             result = []
             for item in items[:limit]:
-                title = item.get("title", "")
-                if not title:
-                    continue
+                title = item.find('title')
+                link = item.find('link')
+                pub_date = item.find('pubDate')
                 result.append({
-                    "title": title,
-                    "url": f"https://36kr.com{item.get('path', '')}",
-                    "img_url": item.get("cover", ""),
-                    "pub_time": item.get("published_at", "")[:10] if item.get("published_at") else datetime.now().strftime("%Y-%m-%d"),
+                    "title": title.text.strip() if title is not None and title.text else "",
+                    "url": link.text.strip() if link is not None and link.text else "",
+                    "img_url": "",
+                    "pub_time": pub_date.text[:10] if pub_date is not None and pub_date.text else datetime.now().strftime("%Y-%m-%d"),
                     "source": self.source_name,
                     "category": "AI科技",
-                    "channel": "36氪AI",
+                    "channel": "36氪",
                 })
             return result
         except Exception as e:

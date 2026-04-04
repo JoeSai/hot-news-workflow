@@ -13,7 +13,7 @@ const DEFAULT_WORKFLOW = {
       type: 'hotspotCapture',
       position: { x: 50, y: 200 },
       data: {
-        platforms: ['36kr', 'liangzi', 'jiqizhixin', 'hackernews'],
+        platforms: ['wangyi', 'ithome', 'toutiao', 'zhihu'],
         limit: 20,
         status: 'idle',
         outputType: 'news'
@@ -142,11 +142,8 @@ export function getInputData<T extends NewsItem | Keyword>(
     }
     // 支持从热词列表节点读取选中的热词
     if (inputType === 'selectedKeywords' && sourceData.selectedKeywords?.length) {
-      // 返回 Keyword 格式
-      return sourceData.selectedKeywords.map((word: string, i: number) => ({
-        word,
-        weight: 1 - (i * 0.01),  // 模拟权重
-      })) as T[];
+      // 直接返回完整的 Keyword 对象（含 sourceNews）
+      return sourceData.selectedKeywords as T[];
     }
   }
 

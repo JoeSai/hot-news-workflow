@@ -65,26 +65,42 @@ export async function extractKeywords(
   }
 
   const data = await response.json();
-  return data.keywords as Keyword[];
+  // 转换 snake_case -> camelCase
+  return (data.keywords as Array<Record<string, unknown>>).map(k => ({
+    word: k.word as string,
+    weight: k.weight as number,
+    type: k.type as 'word' | 'phrase' | undefined,
+    sourceNews: k.source_news as string[] | undefined,
+  }));
 }
 
 export interface GenerateContentParams {
-  keywords: string[];
+  keywords: Array<{ word: string; weight: number; type?: string; sourceNews?: string[] }>;
   newsTitles?: string[];
   style?: string;
   apiType?: string;
   apiKey?: string;
 }
 
-export async function generateContent(params: GenerateContentParams): Promise<string> {
+export interface GenerateContentResult {
+  draft: string;
+  titles: string[];
+  body: string;
+  tags: string[];
+}
+
+export async function generateContent(params: GenerateContentParams): Promise<GenerateContentResult> {
   // 转换为后端 snake_case 字段名
-  const payload = {
+  // api_key 只在用户提供了才传，空时让后端读环境变量
+  const payload: Record<string, unknown> = {
     keywords: params.keywords,
     news_titles: params.newsTitles || [],
     style: params.style,
     api_type: params.apiType,
-    api_key: params.apiKey,
   };
+  if (params.apiKey) {
+    payload.api_key = params.apiKey;
+  }
   const response = await fetch(`${API_BASE}/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -99,5 +115,11 @@ export async function generateContent(params: GenerateContentParams): Promise<st
   if (!data.success) {
     throw new Error(data.error || '生成失败');
   }
-  return data.draft as string;
+  // 后端返回结构化数据，消除前端正则解析
+  return {
+    draft: data.draft as string,
+    titles: (data.titles as string[]) || [],
+    body: data.body as string || '',
+    tags: (data.tags as string[]) || [],
+  };
 }
