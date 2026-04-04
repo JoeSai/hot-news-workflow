@@ -395,31 +395,24 @@ def is_valid_keyphrase(word: str) -> bool:
     return True
 
 
-def extract_phrases_yake(titles: List[str], top_k: int = 50) -> List[dict]:
-    """
-    使用 YAKE 提取关键短语
-    YAKE 能提取多词短语，对内容生成更有价值
-    """
-    # 初始化 YAKE（中文）
-    kw_extractor = yake.KeywordExtractor(
-        lan="zh",           # 中文
-        n=3,                # 短语长度 1-3
-        dedupLim=0.7,       # 去重阈值（相似短语会被过滤）
-        dedupFunc="seqm",   # 字符串匹配去重
-        windowsSize=1,
-        top=top_k * 2,      # 先提取更多，后面过滤
-        features=None,
-    )
+def _is_chinese(text: str) -> bool:
+    """判断文本是否包含中文（用于语言分流）"""
+    return bool(re.search(r'[\u4e00-\u9fff]', text))
 
-    # 对每条标题单独提取，再合并（记录每个词的来源标题）
-    # 格式：(word, score, source_titles_set)
+def extract_phrases_yake(titles: List[str], top_k: int = 50) -> List[dict]:
+    """使用 YAKE 提取关键短语"""
+    # P2.4.5b: 中英文分流处理，避免 jieba 切碎英文
+    kw_extractor_zh = yake.KeywordExtractor(lan="zh", n=3, dedupLim=0.7, dedupFunc="seqm", windowsSize=1, top=top_k*2, features=None)
+    kw_extractor_en = yake.KeywordExtractor(lan="en", n=3, dedupLim=0.7, dedupFunc="seqm", windowsSize=1, top=top_k*2, features=None)
     all_keywords: list[tuple[str, float, set[str]]] = []
     for title in titles:
         if not title:
             continue
-        # jieba 预处理，解决 YAKE 中文分词差的问题
-        processed_title = preprocess_for_yake(title)
-        keywords = kw_extractor.extract_keywords(processed_title)
+        # P2.4.5b: 中文用 jieba+YAKE，英文直接用 YAKE en
+        if _is_chinese(title):
+            keywords = kw_extractor_zh.extract_keywords(preprocess_for_yake(title))
+        else:
+            keywords = kw_extractor_en.extract_keywords(title)
         for word, score in keywords:
             all_keywords.append((word.strip(), score, {title}))
 
@@ -427,11 +420,9 @@ def extract_phrases_yake(titles: List[str], top_k: int = 50) -> List[dict]:
     all_keywords.sort(key=lambda x: x[1])
 
     # 过滤并去重（同时收集来源标题）
-    seen: dict[str, tuple[float, set[str]]] = {}
+    # P2.4.5a: seen 存 (score, sources, full_word)，去重 key 前3字符，输出 full_word
+    seen: dict[str, tuple[float, set[str], str]] = {}
     for word, score, sources in all_keywords:
-        # 基本过滤
-        if len(word) < 2:
-            continue
         if word in STOP_WORDS:
             continue
         if word in GENERIC_NEWS_TERMS:
@@ -439,8 +430,17 @@ def extract_phrases_yake(titles: List[str], top_k: int = 50) -> List[dict]:
         if not is_valid_keyphrase(word):
             continue
 
-        # 简短去重
-        key = word[:3] if len(word) >= 3 else word
+        # P2.4.5d: 最短长度过滤 — 英文 ≥4，中文 ≥2
+        has_chinese = bool(re.search(r'[\u4e00-\u9fff]', word))
+        if has_chinese:
+            if len(word) < 2:
+                continue
+        else:
+            if len(word) < 4:
+                continue
+
+        # 简短去重 key（前3字符），保留完整词
+        dedup_key = word[:3] if len(word) >= 3 else word
 
         # 过滤包含通用词的短语
         is_filtered = False
@@ -451,20 +451,18 @@ def extract_phrases_yake(titles: List[str], top_k: int = 50) -> List[dict]:
         if is_filtered:
             continue
 
-        if key in seen:
-            # 合并来源标题
-            old_score, old_sources = seen[key]
+        if dedup_key in seen:
+            old_score, old_sources, old_word = seen[dedup_key]
             if score < old_score:
-                seen[key] = (score, old_sources | sources)
+                seen[dedup_key] = (score, old_sources | sources, word)
             else:
-                seen[key] = (old_score, old_sources | sources)
+                seen[dedup_key] = (old_score, old_sources | sources, old_word)
         else:
-            seen[key] = (score, sources)
+            seen[dedup_key] = (score, sources, word)
 
     # 构建结果
     result = []
-    for key, (score, sources) in seen.items():
-        word = key
+    for dedup_key, (score, sources, word) in seen.items():
         # YAKE 得分转权重（得分越低权重越高）
         weight = max(0.1, round(1.0 / (score + 0.1), 4))
         result.append({
@@ -475,163 +473,8 @@ def extract_phrases_yake(titles: List[str], top_k: int = 50) -> List[dict]:
             "source_news": list(sources)[:5],
         })
 
-    # 按权重排序
     result.sort(key=lambda x: x["weight"], reverse=True)
     return result[:top_k]
-
-
-@app.post("/api/keywords")
-async def extract_keywords_api(request: KeywordRequest):
-    """
-    从新闻列表中提取关键词/热词
-    """
-    keywords = extract_keywords(request.news, request.top_k, request.method)
-
-    return {
-        "success": True,
-        "keywords": keywords,
-        "count": len(keywords),
-    }
-
-
-# 内容风格配置
-CONTENT_STYLES = {
-    "科普向": "以科普的角度，用通俗易懂的语言介绍这个话题，适合新手入门",
-    "观点向": "表达对这个话题的独特观点和看法，有态度有立场，引发讨论",
-    "教程向": "以教程的形式，手把手教读者了解/使用这个话题相关的技能或工具",
-    "测评向": "对比评测同类产品或服务，给出选购建议和使用体验",
-}
-
-# API 配置
-API_CONFIGS = {
-    "deepseek": {
-        "base_url": "https://api.deepseek.com/v1",
-        "model": "deepseek-chat",
-        "default_key_env": "DEEPSEEK_API_KEY",
-    },
-    "openai": {
-        "base_url": "https://api.openai.com/v1",
-        "model": "gpt-4o-mini",
-        "default_key_env": "OPENAI_API_KEY",
-    },
-    "claude": {
-        "base_url": "https://api.anthropic.com/v1",
-        "model": "claude-3-haiku-20240307",
-        "default_key_env": "CLAUDE_API_KEY",
-    },
-    "minimax": {
-        "base_url": "https://api.minimax.chat/v1",
-        "model": "MiniMax-M2.7",
-        "default_key_env": "MINIMAX_API_KEY",
-    },
-    "qwen": {
-        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "model": "qwen-plus",
-        "default_key_env": "DASHSCOPE_API_KEY",
-    },
-    "zhipu": {
-        "base_url": "https://open.bigmodel.cn/api/paas/v4",
-        "model": "glm-4-flash",
-        "default_key_env": "ZHIPU_API_KEY",
-    },
-}
-
-
-@app.post("/api/generate")
-async def generate_content(request: ContentGenerateRequest):
-    """
-    AI 内容生成接口
-    根据热词生成小红书风格内容草稿
-    """
-    # Debug log
-    print(f"[DEBUG] Received request: api_type={request.api_type}, has_key={'Yes' if request.api_key else 'No'}")
-    try:
-        keywords_str = "、".join([k["word"] if isinstance(k, dict) else k for k in request.keywords])
-        style_desc = CONTENT_STYLES.get(request.style, CONTENT_STYLES["科普向"])
-
-        # 构建新闻参考上下文：优先用关键词的来源新闻，其次用 news_titles
-        news_context = ""
-        # 从关键词的 source_news 收集相关热点
-        relevant_news: set[str] = set()
-        for k in request.keywords:
-            if isinstance(k, dict) and k.get("source_news"):
-                for sn in k["source_news"]:
-                    relevant_news.add(sn)
-        if relevant_news:
-            news_lines = list(relevant_news)[:5]
-            news_context = "\n".join([f"- {t}" for t in news_lines])
-            news_context = f"\n\n🔥 热点事件（请围绕这些事件生成内容）：\n{news_context}"
-        elif request.news_titles:
-            news_context = "\n".join([f"- {t}" for t in request.news_titles[:5]])
-            news_context = f"\n\n参考新闻标题：\n{news_context}"
-
-        # 构造 prompt
-        prompt = f"""你是一个专业的小红书科技博主，擅长写吸引人的AI科技内容。
-
-请根据以下热词和对应的热点事件生成一篇小红书风格的内容草稿：
-
-热词：{keywords_str}
-内容风格：{style_desc}
-{news_context}
-
-请严格按照以下格式生成内容（不要输出任何说明文字，直接生成草稿）：
-
-## 标题（3个备选）
-1. [这里写第一个标题]
-2. [这里写第二个标题]
-3. [这里写第三个标题]
-
-## 正文
-[这里写正文内容，300-600字，分段清晰，带emoji，适当添加话题标签]
-
-## 推荐标签
-[标签1] [标签2] [标签3] [标签4] [标签5]
-
----
-⚠️ 注意：这是AI辅助生成的草稿，请根据实际情况修改后使用。"""
-
-        # 获取 API 配置
-        api_config = API_CONFIGS.get(request.api_type, API_CONFIGS["deepseek"])
-
-        # 获取 API key
-        api_key = request.api_key or os.environ.get(api_config["default_key_env"], "")
-        if not api_key:
-            return {
-                "success": False,
-                "error": f"请配置 {request.api_type} API Key",
-                "draft": None,
-            }
-
-        # 调用 AI API（统一使用 OpenAI 兼容格式）
-        result = call_openai_compatible_api(
-            api_key,
-            api_config["base_url"],
-            api_config["model"],
-            prompt
-        )
-
-        if result.get("error"):
-            return {
-                "success": False,
-                "error": result["error"],
-                "draft": None,
-            }
-
-        return {
-            "success": True,
-            "draft": result.get("content", ""),
-            "model": api_config["model"],
-            # 新增：结构化数据，消除前端正则解析
-            **parse_draft_structured(result.get("content", "")),
-        }
-
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "draft": None,
-        }
-
 
 def parse_draft_structured(draft: str) -> dict:
     """解析草稿文本为结构化数据"""
