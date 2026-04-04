@@ -1,4 +1,4 @@
-import { memo, useState, useMemo } from 'react';
+import { memo, useState, useMemo, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useWorkflowStore, getInputData } from '../../hooks/useWorkflowStore';
 import type { NodeData, Keyword, NewsItem } from '../../types/workflow';
@@ -24,9 +24,11 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
   const [copied, setCopied] = useState('');
 
   // 组件挂载时清除旧错误状态
-  if (data.generateStatus === 'error') {
-    updateNodeData(id, { generateStatus: 'idle', error: undefined });
-  }
+  useEffect(() => {
+    if (data.generateStatus === 'error') {
+      updateNodeData(id, { generateStatus: 'idle', error: undefined });
+    }
+  }, []);
 
   // 从连线获取输入数据
   const inputKeywords = useMemo(() => {
