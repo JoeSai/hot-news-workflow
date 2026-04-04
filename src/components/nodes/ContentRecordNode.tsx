@@ -136,6 +136,38 @@ function ContentRecordNode(_props: ContentRecordNodeProps) {
       .sort((a, b) => (b.avg_likes + b.avg_collects + b.avg_comments) - (a.avg_likes + a.avg_collects + a.avg_comments));
   }, [records]);
 
+  // v0.20-R4: 发布时间段效果统计
+  const TIME_ANALYSIS = useMemo(() => {
+    const periods = [
+      { key: '🌙 凌晨 0-6点', min: 0, max: 6, total: { likes: 0, collects: 0, comments: 0, shares: 0 }, count: 0 },
+      { key: '🌅 早上 6-12点', min: 6, max: 12, total: { likes: 0, collects: 0, comments: 0, shares: 0 }, count: 0 },
+      { key: '☀️ 下午 12-18点', min: 12, max: 18, total: { likes: 0, collects: 0, comments: 0, shares: 0 }, count: 0 },
+      { key: '🌆 晚上 18-24点', min: 18, max: 24, total: { likes: 0, collects: 0, comments: 0, shares: 0 }, count: 0 },
+    ];
+    for (const r of records) {
+      if (!r.published_at) continue;
+      const hour = new Date(r.published_at).getHours();
+      const period = periods.find(p => hour >= p.min && hour < p.max);
+      if (!period) continue;
+      period.total.likes += r.likes;
+      period.total.collects += r.collects;
+      period.total.comments += r.comments;
+      period.total.shares += r.shares;
+      period.count++;
+    }
+    return periods.map(p => ({
+      label: p.key,
+      count: p.count,
+      avg_likes: p.count > 0 ? Math.round(p.total.likes / p.count) : 0,
+      avg_collects: p.count > 0 ? Math.round(p.total.collects / p.count) : 0,
+      avg_comments: p.count > 0 ? Math.round(p.total.comments / p.count) : 0,
+      avg_shares: p.count > 0 ? Math.round(p.total.shares / p.count) : 0,
+      total_engagement: p.count > 0
+        ? Math.round((p.total.likes + p.total.collects + p.total.comments + p.total.shares) / p.count)
+        : 0,
+    }));
+  }, [records]);
+
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-200 w-96">
       <Handle type="target" position={Position.Left} />
@@ -297,6 +329,52 @@ function ContentRecordNode(_props: ContentRecordNodeProps) {
                     <span className="text-gray-400">{row.count}篇</span>
                   </div>
                   <div className="grid grid-cols-4 gap-1 text-center">
+                    {[
+                      { label: '👍', value: row.avg_likes, color: 'text-pink-600' },
+                      { label: '⭐', value: row.avg_collects, color: 'text-blue-600' },
+                      { label: '💬', value: row.avg_comments, color: 'text-orange-600' },
+                      { label: '↗️', value: row.avg_shares, color: 'text-gray-600' },
+                    ].map(m => (
+                      <div key={m.label}>
+                        <span className={`font-bold ${m.color}`}>{m.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* v0.20-R4: 发布时间段效果统计 */}
+        {records.length > 0 && (
+          <div className="border-t border-gray-200 pt-3">
+            <div className="text-xs font-medium text-gray-500 mb-2">⏰ 发布时间段分析</div>
+            <div className="space-y-1">
+              {TIME_ANALYSIS.filter(t => t.count > 0).map(row => (
+                <div key={row.label} className="bg-gray-50 rounded p-2 text-xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-gray-700">{row.label}</span>
+                    <span className="text-gray-400">{row.count}篇</span>
+                  </div>
+                  {/* 横向柱状图 */}
+                  <div className="space-y-1">
+                    {[
+                      { label: '总互动', value: row.total_engagement, max: Math.max(...TIME_ANALYSIS.filter(t => t.count > 0).map(t => t.total_engagement), 1), color: 'bg-indigo-400' },
+                    ].map(m => (
+                      <div key={m.label} className="flex items-center gap-1">
+                        <span className="w-12 text-right text-gray-400 text-xs">{m.label}</span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`${m.color} h-2 rounded-full`}
+                            style={{ width: `${Math.round((m.value / m.max) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-gray-600 font-medium text-xs w-8">{m.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-4 gap-1 text-center mt-1">
                     {[
                       { label: '👍', value: row.avg_likes, color: 'text-pink-600' },
                       { label: '⭐', value: row.avg_collects, color: 'text-blue-600' },
