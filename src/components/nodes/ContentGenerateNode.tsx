@@ -23,6 +23,11 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
   const [apiKey, setApiKey] = useState(data.apiKey || '');
   const [copied, setCopied] = useState('');
 
+  // 组件挂载时清除旧错误状态
+  if (data.generateStatus === 'error') {
+    updateNodeData(id, { generateStatus: 'idle', error: undefined });
+  }
+
   // 从连线获取输入数据
   const inputKeywords = useMemo(() => {
     const keywords = getInputData<Keyword>(id, nodes, edges, 'keywords');
