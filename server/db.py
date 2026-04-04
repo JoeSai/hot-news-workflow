@@ -89,6 +89,25 @@ def init_db():
             )
         """)
 
+        # 内容效果记录表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS content_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                draft_id TEXT,
+                draft_title TEXT,
+                keywords TEXT,
+                style TEXT,
+                published_at TEXT,
+                platform TEXT DEFAULT '小红书',
+                likes INTEGER DEFAULT 0,
+                collects INTEGER DEFAULT 0,
+                comments INTEGER DEFAULT 0,
+                shares INTEGER DEFAULT 0,
+                notes TEXT,
+                created_at TEXT NOT NULL
+            )
+        """)
+
 
 def save_draft(keywords: List[str], titles: List[str], body: str, tags: List[str], style: str) -> int:
     """保存草稿"""
@@ -249,6 +268,123 @@ def get_keyword_trends(keywords: List[str] = None, days: int = 7) -> Dict[str, L
                 })
 
         return result
+    finally:
+        conn.close()
+
+
+# ==================== 内容效果记录 CRUD ====================
+
+def save_content_record(
+    draft_id: str = None,
+    draft_title: str = None,
+    keywords: List[str] = None,
+    style: str = "",
+    published_at: str = "",
+    platform: str = "小红书",
+    likes: int = 0,
+    collects: int = 0,
+    comments: int = 0,
+    shares: int = 0,
+    notes: str = ""
+) -> int:
+    """保存内容效果记录"""
+    with get_db_write() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """INSERT INTO content_records
+               (draft_id, draft_title, keywords, style, published_at, platform,
+                likes, collects, comments, shares, notes, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (draft_id, draft_title, json.dumps(keywords or [], ensure_ascii=False),
+             style, published_at, platform, likes, collects, comments, shares,
+             notes, datetime.now().isoformat())
+        )
+        return cursor.lastrowid
+
+
+def get_content_records(limit: int = 50) -> List[Dict[str, Any]]:
+    """获取内容效果记录列表"""
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM content_records ORDER BY id DESC LIMIT ?", (limit,)
+        )
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
+def get_content_record(record_id: int) -> Optional[Dict[str, Any]]:
+    """获取单条内容效果记录"""
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM content_records WHERE id = ?", (record_id,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def delete_content_record(record_id: int) -> bool:
+    """删除内容效果记录"""
+    with get_db_write() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM content_records WHERE id = ?", (record_id,)
+        )
+        return cursor.rowcount > 0
+
+
+def get_content_stats() -> Dict[str, Any]:
+    """获取内容效果统计"""
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) as total,
+                   SUM(likes) as total_likes,
+                   SUM(collects) as total_collects,
+                   SUM(comments) as total_comments,
+                   SUM(shares) as total_shares,
+                   AVG(likes) as avg_likes,
+                   AVG(collects) as avg_collects,
+                   AVG(comments) as avg_comments,
+                   AVG(shares) as avg_shares
+            FROM content_records
+        """)
+        row = cursor.fetchone()
+
+        # 按 style 分组统计
+        cursor.execute("""
+            SELECT style,
+                   COUNT(*) as count,
+                   AVG(likes) as avg_likes,
+                   AVG(collects) as avg_collects,
+                   AVG(comments) as avg_comments,
+                   AVG(shares) as avg_shares
+            FROM content_records
+            WHERE style != ''
+            GROUP BY style
+        """)
+        style_rows = cursor.fetchall()
+
+        return {
+            "total": row["total"] or 0,
+            "total_likes": row["total_likes"] or 0,
+            "total_collects": row["total_collects"] or 0,
+            "total_comments": row["total_comments"] or 0,
+            "total_shares": row["total_shares"] or 0,
+            "avg_likes": round(row["avg_likes"] or 0, 2),
+            "avg_collects": round(row["avg_collects"] or 0, 2),
+            "avg_comments": round(row["avg_comments"] or 0, 2),
+            "avg_shares": round(row["avg_shares"] or 0, 2),
+            "by_style": [dict(r) for r in style_rows]
+        }
     finally:
         conn.close()
 

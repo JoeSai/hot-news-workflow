@@ -5,7 +5,7 @@ const API_BASE = 'http://localhost:8000/api';
 // 请求超时（毫秒）
 const FETCH_TIMEOUT = 30000;
 
-async function fetchWithTimeout(url: string, options: RequestInit, timeout: number = FETCH_TIMEOUT): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout: number = FETCH_TIMEOUT): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
   try {
@@ -172,4 +172,75 @@ export async function getKeywordTrends(keywords: string[], days: number = 7): Pr
   if (!response.ok) throw new Error(`API error: ${response.status}`);
   const data = await response.json();
   return data.trends as Record<string, TrendDataPoint[]>;
+}
+
+// ==================== 内容效果记录 API ====================
+
+export interface ContentRecord {
+  id: number;
+  draft_id: string | null;
+  draft_title: string | null;
+  keywords: string[];
+  style: string;
+  published_at: string;
+  platform: string;
+  likes: number;
+  collects: number;
+  comments: number;
+  shares: number;
+  notes: string;
+  created_at: string;
+}
+
+export interface ContentStats {
+  total: number;
+  total_likes: number;
+  total_collects: number;
+  total_comments: number;
+  total_shares: number;
+  avg_likes: number;
+  avg_collects: number;
+  avg_comments: number;
+  avg_shares: number;
+  by_style: Array<{
+    style: string;
+    count: number;
+    avg_likes: number;
+    avg_collects: number;
+    avg_comments: number;
+    avg_shares: number;
+  }>;
+}
+
+export async function saveContentRecord(data: Omit<ContentRecord, 'id' | 'created_at'>): Promise<number> {
+  const response = await fetchWithTimeout(`${API_BASE}/content-records`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  const result = await response.json();
+  if (!result.success) throw new Error(result.error || '保存失败');
+  return result.id;
+}
+
+export async function getContentRecords(limit: number = 50): Promise<ContentRecord[]> {
+  const response = await fetchWithTimeout(`${API_BASE}/content-records?limit=${limit}`);
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  const result = await response.json();
+  return result.records as ContentRecord[];
+}
+
+export async function deleteContentRecord(id: number): Promise<void> {
+  const response = await fetchWithTimeout(`${API_BASE}/content-records/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+}
+
+export async function getContentStats(): Promise<ContentStats> {
+  const response = await fetchWithTimeout(`${API_BASE}/content-records/stats/summary`);
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  const result = await response.json();
+  return result.stats as ContentStats;
 }

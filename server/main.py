@@ -843,6 +843,97 @@ async def get_keyword_trends(keywords: str = None, days: int = 7):
         return {"error": str(e)}
 
 
+# ==================== 内容效果记录 API ====================
+
+class ContentRecordRequest(BaseModel):
+    draft_id: Optional[str] = None
+    draft_title: Optional[str] = None
+    keywords: List[str] = []
+    style: str = ""
+    published_at: str = ""
+    platform: str = "小红书"
+    likes: int = 0
+    collects: int = 0
+    comments: int = 0
+    shares: int = 0
+    notes: str = ""
+
+
+@app.post("/api/content-records")
+async def save_content_record_api(request: ContentRecordRequest):
+    """保存内容效果记录"""
+    try:
+        from db import save_content_record as db_save
+        record_id = db_save(
+            draft_id=request.draft_id,
+            draft_title=request.draft_title,
+            keywords=request.keywords,
+            style=request.style,
+            published_at=request.published_at,
+            platform=request.platform,
+            likes=request.likes,
+            collects=request.collects,
+            comments=request.comments,
+            shares=request.shares,
+            notes=request.notes,
+        )
+        return {"success": True, "id": record_id}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/content-records")
+async def list_content_records(limit: int = 50):
+    """获取内容效果记录列表"""
+    try:
+        from db import get_content_records as db_get
+        records = db_get(limit)
+        # JSON 解析
+        for r in records:
+            if r.get("keywords"):
+                r["keywords"] = json.loads(r["keywords"])
+        return {"success": True, "records": records}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/content-records/{record_id}")
+async def get_content_record_api(record_id: int):
+    """获取单条内容效果记录"""
+    try:
+        from db import get_content_record as db_get
+        record = db_get(record_id)
+        if not record:
+            return {"error": "记录不存在"}
+        if record.get("keywords"):
+            record["keywords"] = json.loads(record["keywords"])
+        return {"success": True, "record": record}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.delete("/api/content-records/{record_id}")
+async def delete_content_record_api(record_id: int):
+    """删除内容效果记录"""
+    try:
+        from db import delete_content_record as db_delete
+        deleted = db_delete(record_id)
+        return {"success": deleted}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/content-records/stats/summary")
+async def get_content_stats():
+    """获取内容效果统计"""
+    try:
+        from db import get_content_stats as db_stats
+        stats = db_stats()
+        return {"success": True, "stats": stats}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/api/status")
 async def status():
     """检查服务状态"""
