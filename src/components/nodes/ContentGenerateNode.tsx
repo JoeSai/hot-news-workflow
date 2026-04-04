@@ -260,9 +260,9 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
                 ))}
               </div>
             </div>
-          )
+          ))
         ) : (
-          <>
+          <div className="space-y-4">
         {/* 输入信息 */}
         <div className="text-sm text-gray-600">
           <div>热词: <span className="font-medium">{selectedKeywords.length || inputKeywords.length}</span> 个</div>
@@ -482,8 +482,9 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
                 <div className="text-xs text-gray-400 bg-gray-50 px-3 py-2 rounded">
                   ⚠️ 草稿仅供参考，请修改后手动发布
                 </div>
-              </>
+              </div>
             )}
+          </div>
           </div>
         )}
       </div>
