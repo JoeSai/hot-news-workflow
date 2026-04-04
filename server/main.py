@@ -448,6 +448,21 @@ API_CONFIGS = {
         "model": "claude-3-haiku-20240307",
         "default_key_env": "CLAUDE_API_KEY",
     },
+    "minimax": {
+        "base_url": "https://api.minimax.chat/v1",
+        "model": "MiniMax-M2",
+        "default_key_env": "MINIMAX_API_KEY",
+    },
+    "qwen": {
+        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "model": "qwen-plus",
+        "default_key_env": "DASHSCOPE_API_KEY",
+    },
+    "zhipu": {
+        "base_url": "https://open.bigmodel.cn/api/paas/v4",
+        "model": "glm-4-flash",
+        "default_key_env": "ZHIPU_API_KEY",
+    },
 }
 
 
@@ -504,27 +519,13 @@ async def generate_content(request: ContentGenerateRequest):
                 "draft": None,
             }
 
-        # 调用 AI API
-        if request.api_type == "deepseek":
-            result = call_deepseek_api(
-                api_key,
-                api_config["base_url"],
-                api_config["model"],
-                prompt
-            )
-        elif request.api_type == "openai":
-            result = call_openai_api(
-                api_key,
-                api_config["base_url"],
-                api_config["model"],
-                prompt
-            )
-        else:
-            return {
-                "success": False,
-                "error": f"暂不支持 {request.api_type}",
-                "draft": None,
-            }
+        # 调用 AI API（统一使用 OpenAI 兼容格式）
+        result = call_openai_compatible_api(
+            api_key,
+            api_config["base_url"],
+            api_config["model"],
+            prompt
+        )
 
         if result.get("error"):
             return {
@@ -547,8 +548,8 @@ async def generate_content(request: ContentGenerateRequest):
         }
 
 
-def call_deepseek_api(api_key: str, base_url: str, model: str, prompt: str) -> dict:
-    """调用 DeepSeek API"""
+def call_openai_compatible_api(api_key: str, base_url: str, model: str, prompt: str) -> dict:
+    """调用 OpenAI 兼容格式的 API（DeepSeek/Minimax/通义等）"""
     try:
         url = f"{base_url}/chat/completions"
         headers = {
@@ -576,11 +577,6 @@ def call_deepseek_api(api_key: str, base_url: str, model: str, prompt: str) -> d
         return {"error": f"API 请求失败: {str(e)}"}
     except Exception as e:
         return {"error": f"生成失败: {str(e)}"}
-
-
-def call_openai_api(api_key: str, base_url: str, model: str, prompt: str) -> dict:
-    """调用 OpenAI API"""
-    return call_deepseek_api(api_key, base_url, model, prompt)  # 接口格式相同
 
 
 @app.get("/api/status")

@@ -164,6 +164,9 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
             >
               <option value="deepseek">DeepSeek</option>
               <option value="openai">OpenAI</option>
+              <option value="minimax">MiniMax</option>
+              <option value="qwen">通义千问</option>
+              <option value="zhipu">智谱</option>
             </select>
           </div>
 
