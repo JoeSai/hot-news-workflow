@@ -34,7 +34,7 @@ const TOPIC_TYPES = {
   测评向: ['测评', '评测', '对比', '横评', '体验', '试用'],
 };
 
-function TopicRecommendNode({ id, data }: TopicRecommendNodeProps) {
+function TopicRecommendNode({ id }: TopicRecommendNodeProps) {
   const { nodes, edges, updateNodeData } = useWorkflowStore();
   const [aiRelevanceThreshold, setAiRelevanceThreshold] = useState(30);
 

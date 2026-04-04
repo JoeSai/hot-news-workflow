@@ -20,7 +20,7 @@ function HotwordListNode({ id, data }: HotwordListNodeProps) {
   });
   const [copied, setCopied] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [customKeywords, setCustomKeywords] = useState<Keyword[]>(data.customKeywords || []);
+  const [customKeywords, setCustomKeywords] = useState<Keyword[]>((data.customKeywords as Keyword[]) || []);
   const [newWord, setNewWord] = useState('');
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
 

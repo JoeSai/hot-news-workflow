@@ -340,14 +340,12 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     // 获取输入数据
     const incomingEdges = state.edges.filter(e => e.target === nodeId);
     let inputNews: NewsItem[] = [];
-    let inputKeywords: Keyword[] = [];
 
     for (const edge of incomingEdges) {
       const sourceNode = state.nodes.find(n => n.id === edge.source);
       if (!sourceNode) continue;
       const sourceData = sourceNode.data as NodeData;
       if (sourceData.news?.length) inputNews = sourceData.news;
-      if (sourceData.keywords?.length) inputKeywords = sourceData.keywords;
     }
 
     const update = (data: Partial<NodeData>) => {
@@ -412,8 +410,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
             draft: result.draft,
             draftTitles: result.titles,
             draftBody: result.body,
-            draftTags: result.tags,
-            outputType: 'draft'
+            draftTags: result.tags
           });
         } catch (e) {
           update({ generateStatus: 'error', error: e instanceof Error ? e.message : '生成失败' });

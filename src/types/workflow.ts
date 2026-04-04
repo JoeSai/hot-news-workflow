@@ -93,7 +93,7 @@ export interface NodeData extends Record<string, unknown> {
   newsDetailStatus?: 'idle' | 'running' | 'success' | 'error';
 
   // 热词列表节点
-  selectedKeywords?: string[];
+  selectedKeywords?: Keyword[];
 
   // 内容生成节点
   draft?: string;
