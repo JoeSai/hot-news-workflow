@@ -6,10 +6,14 @@ import subprocess
 import re
 import json
 import os
+import sys
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, List
 from collections import Counter
+
+# 确保 server 目录在 Python 路径中
+sys.path.insert(0, str(Path(__file__).parent))
 
 import jieba
 import jieba.analyse
@@ -123,7 +127,7 @@ async def run_crawler(request: CrawlRequest):
     使用真实新闻源抓取
     """
     try:
-        from server.spider import crawl_all
+        from spider import crawl_all
 
         # 映射平台名称
         platform_map = {
