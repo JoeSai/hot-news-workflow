@@ -2,6 +2,13 @@
 
 ---
 
+## v0.20
+
+**Features (P2.5 / P2.6):**
+- **v0.20-R1: 选题推荐标记「近期已写过」** - `TopicRecommendNode` 引入 `useDraftHistory`，近 7 天草稿关键词在推荐结果中标记「📝 已写过」
+
+---
+
 ## v0.17
 
 **Bug Fixes (P2.4.5):**
