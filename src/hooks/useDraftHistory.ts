@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 export interface DraftItem {
   id: string;
@@ -10,60 +10,82 @@ export interface DraftItem {
   style: string;
 }
 
-const STORAGE_KEY = 'draft-history';
-const MAX_DRAFTS = 50;
+const API_BASE = 'http://localhost:8000/api';
 
-function loadDrafts(): DraftItem[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      return JSON.parse(saved);
-    }
-  } catch (e) {
-    console.warn('加载草稿历史失败:', e);
-  }
-  return [];
+async function fetchDrafts(): Promise<DraftItem[]> {
+  const response = await fetch(`${API_BASE}/drafts`);
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  const data = await response.json();
+  return data.drafts.map((d: Record<string, unknown>) => ({
+    id: String(d.id),
+    createdAt: d.created_at as string,
+    keywords: JSON.parse(d.keywords as string) as string[],
+    titles: JSON.parse(d.titles as string) as string[],
+    body: d.body as string,
+    tags: JSON.parse(d.tags as string) as string[],
+    style: d.style as string,
+  }));
 }
 
-function saveDrafts(drafts: DraftItem[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
-  } catch (e) {
-    console.warn('保存草稿历史失败:', e);
-  }
+async function createDraft(draft: Omit<DraftItem, 'id' | 'createdAt'>): Promise<string> {
+  const response = await fetch(`${API_BASE}/drafts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      keywords: draft.keywords,
+      titles: draft.titles,
+      body: draft.body,
+      tags: draft.tags,
+      style: draft.style,
+    }),
+  });
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  const data = await response.json();
+  return String(data.id);
+}
+
+async function removeDraft(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/drafts/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
 }
 
 export function useDraftHistory() {
-  const [drafts, setDrafts] = useState<DraftItem[]>(() => loadDrafts());
+  const [drafts, setDrafts] = useState<DraftItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const addDraft = useCallback((draft: Omit<DraftItem, 'id' | 'createdAt'>) => {
-    const newDraft: DraftItem = {
-      ...draft,
-      id: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      createdAt: new Date().toLocaleString('zh-CN'),
-    };
-
-    setDrafts(prev => {
-      const updated = [newDraft, ...prev].slice(0, MAX_DRAFTS);
-      saveDrafts(updated);
-      return updated;
-    });
-
-    return newDraft.id;
+  // 初始化时从后端加载草稿
+  useEffect(() => {
+    fetchDrafts()
+      .then(setDrafts)
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
-  const deleteDraft = useCallback((id: string) => {
-    setDrafts(prev => {
-      const updated = prev.filter(d => d.id !== id);
-      saveDrafts(updated);
-      return updated;
-    });
+  const addDraft = useCallback(async (draft: Omit<DraftItem, 'id' | 'createdAt'>): Promise<string> => {
+    const id = await createDraft(draft);
+    const newDraft: DraftItem = {
+      ...draft,
+      id,
+      createdAt: new Date().toLocaleString('zh-CN'),
+    };
+    setDrafts(prev => [newDraft, ...prev]);
+    return id;
+  }, []);
+
+  const deleteDraft = useCallback(async (id: string) => {
+    await removeDraft(id);
+    setDrafts(prev => prev.filter(d => d.id !== id));
   }, []);
 
   const clearAllDrafts = useCallback(() => {
+    // 批量删除
+    Promise.all(drafts.map(d => removeDraft(d.id)))
+      .catch(e => setError(e.message));
     setDrafts([]);
-    localStorage.removeItem(STORAGE_KEY);
-  }, []);
+  }, [drafts]);
 
   const exportDraft = useCallback((draft: DraftItem, format: 'json' | 'markdown' | 'txt') => {
     let content: string;
@@ -131,6 +153,8 @@ export function useDraftHistory() {
 
   return {
     drafts,
+    loading,
+    error,
     addDraft,
     deleteDraft,
     clearAllDrafts,

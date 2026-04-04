@@ -154,16 +154,12 @@ export function getInputData<T extends NewsItem | Keyword>(
 interface WorkflowState {
   nodes: Node[];
   edges: Edge[];
-  news: NewsItem[];
-  keywords: Keyword[];
 
   // Actions
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
   addNode: (node: Node) => void;
   updateNodeData: (nodeId: string, data: Partial<NodeData>) => void;
-  setNews: (news: NewsItem[]) => void;
-  setKeywords: (keywords: Keyword[]) => void;
   onNodesChange: (changes: any) => void;
   onEdgesChange: (changes: any) => void;
   onConnect: (connection: any) => void;
@@ -268,8 +264,6 @@ const savedWorkflow = loadWorkflow();
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   nodes: savedWorkflow.nodes,
   edges: savedWorkflow.edges,
-  news: [],
-  keywords: [],
 
   setNodes: (nodes) => {
     set({ nodes });
@@ -295,9 +289,6 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     saveWorkflow(newNodes, state.edges);
     return { nodes: newNodes };
   }),
-
-  setNews: (news) => set({ news }),
-  setKeywords: (keywords) => set({ keywords }),
 
   onNodesChange: (changes) => set((state) => {
     const newNodes = applyNodeChanges(changes, state.nodes);
@@ -456,6 +447,28 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         await get().runNode(nodeId);
         // 等待一小段时间让状态更新
         await new Promise(r => setTimeout(r, 500));
+      }
+
+      // hotwordList 需要用户交互，runAll 时自动选择 TOP 5 关键词
+      if (node.type === 'hotwordList') {
+        const nodeData = node.data as NodeData;
+        const selectedKws = nodeData.selectedKeywords as Keyword[] || [];
+        if (selectedKws.length === 0) {
+          // 从输入边获取关键词（上游是 keywordExtract）
+          const incomingEdges = state.edges.filter(e => e.target === nodeId);
+          for (const edge of incomingEdges) {
+            const sourceNode = state.nodes.find(n => n.id === edge.source);
+            if (sourceNode) {
+              const sourceData = sourceNode.data as NodeData;
+              const keywords = sourceData.keywords as Keyword[] || [];
+              if (keywords.length > 0) {
+                const top5 = keywords.slice(0, 5);
+                get().updateNodeData(nodeId, { selectedKeywords: top5, outputType: 'keywords' });
+                break;
+              }
+            }
+          }
+        }
       }
 
       // 将后继节点入度-1

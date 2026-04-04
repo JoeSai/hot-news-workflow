@@ -2,6 +2,25 @@ import type { NewsItem } from '../types/workflow';
 
 const API_BASE = 'http://localhost:8000/api';
 
+// 请求超时（毫秒）
+const FETCH_TIMEOUT = 30000;
+
+async function fetchWithTimeout(url: string, options: RequestInit, timeout: number = FETCH_TIMEOUT): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error(`请求超时（${timeout / 1000}秒）`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export interface PlatformResult {
   platform: string;
   count: number;
@@ -14,11 +33,11 @@ export interface CrawlResult {
 }
 
 export async function runCrawler(platforms: string[], limit: number = 30): Promise<CrawlResult> {
-  const response = await fetch(`${API_BASE}/crawl`, {
+  const response = await fetchWithTimeout(`${API_BASE}/crawl`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ platforms, limit }),
-  });
+  }, 60000);
 
   if (!response.ok) {
     throw new Error(`API error: ${response.status}`);
@@ -101,11 +120,11 @@ export async function generateContent(params: GenerateContentParams): Promise<Ge
   if (params.apiKey) {
     payload.api_key = params.apiKey;
   }
-  const response = await fetch(`${API_BASE}/generate`, {
+  const response = await fetchWithTimeout(`${API_BASE}/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-  });
+  }, 90000);
 
   if (!response.ok) {
     throw new Error(`API error: ${response.status}`);

@@ -4,6 +4,27 @@
 
 ## v0.11
 
+**技术债务修复**
+
+- **T1: SQLite 并发安全** - 添加 `threading.Lock()` 写锁，修复 `check_same_thread=False` 风险；所有数据库操作用 `try/finally` 防止连接泄漏
+- **T2: 草稿存储统一** - `useDraftHistory` 改走后端 API (SQLite)，删除 localStorage 双写
+- **T3: Run All 自动选词** - 热词列表无预选时自动取 TOP 5 关键词填充
+- **T4: Store 清理** - 删除无用的 `news`/`keywords` 全局字段
+- **T5: 请求超时机制** - fetch 添加 `AbortController.timeout`，爬虫 60s、AI 生成 90s、其他 30s
+
+**热度趋势图**
+
+- 新增「热度趋势」节点，展示关键词 7/14/30 天趋势折线图
+- SVG 折线图渲染，自动计算权重归一化
+- 趋势状态标记：上升↑、下降↓、爆发🔥、平稳→
+- 关键词选择器，点击切换追踪的关键词
+- 后端新增 `keyword_trends` 表存储每日关键词快照
+- API: `POST /api/keywords/trend` 保存趋势、`GET /api/keywords/trend` 查询趋势
+
+---
+
+## v0.10
+
 **热度趋势图**
 
 - 新增「热度趋势」节点，展示关键词 7/14/30 天趋势折线图
