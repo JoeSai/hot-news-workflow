@@ -58,10 +58,10 @@ const DEFAULT_WORKFLOW = {
     }
   ],
   edges: [
-    { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1', type: 'default' },
-    { id: 'e2-3', source: 'keyword-1', target: 'topic-1', type: 'default' },
-    { id: 'e2-4', source: 'keyword-1', target: 'hotword-1', type: 'default' },
-    { id: 'e4-5', source: 'hotword-1', target: 'content-1', type: 'default' }
+    { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
+    { id: 'e2-3', source: 'keyword-1', target: 'topic-1' },
+    { id: 'e2-4', source: 'keyword-1', target: 'hotword-1' },
+    { id: 'e4-5', source: 'hotword-1', target: 'content-1' }
   ]
 };
 
