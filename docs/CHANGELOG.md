@@ -2,6 +2,17 @@
 
 ---
 
+## v0.7
+
+**爬虫模块化重构**
+
+- 所有爬虫移至 `server/crawlers/` 目录独立文件
+- 支持平台：微博、知乎、今日头条、36氪、量子位、机器之心、HackerNews
+- 每个爬虫可独立导入和测试
+- `from crawlers import WeiboSpider` 即可使用
+
+---
+
 ## v0.6
 
 **工作流模板**
