@@ -5,6 +5,66 @@ import type { NodeData, NewsItem, Keyword, NodeDataType } from '../types/workflo
 
 const STORAGE_KEY = 'hot-news-workflow';
 
+// 默认工作流
+const DEFAULT_WORKFLOW = {
+  nodes: [
+    {
+      id: 'hotspot-1',
+      type: 'hotspotCapture',
+      position: { x: 50, y: 200 },
+      data: {
+        platforms: ['36kr', 'liangzi', 'jiqizhixin', 'hackernews'],
+        limit: 20,
+        status: 'idle',
+        outputType: 'news'
+      }
+    },
+    {
+      id: 'keyword-1',
+      type: 'keywordExtract',
+      position: { x: 400, y: 200 },
+      data: {
+        topK: 50,
+        method: 'phrase',
+        keywordStatus: 'idle',
+        outputType: 'keywords'
+      }
+    },
+    {
+      id: 'topic-1',
+      type: 'topicRecommend',
+      position: { x: 750, y: 120 },
+      data: {}
+    },
+    {
+      id: 'hotword-1',
+      type: 'hotwordList',
+      position: { x: 750, y: 380 },
+      data: {
+        selectedKeywords: [],
+        outputType: 'keywords'
+      }
+    },
+    {
+      id: 'content-1',
+      type: 'contentGenerate',
+      position: { x: 1100, y: 250 },
+      data: {
+        style: '科普向',
+        apiType: 'deepseek',
+        apiKey: '',
+        generateStatus: 'idle'
+      }
+    }
+  ],
+  edges: [
+    { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1', type: 'default' },
+    { id: 'e2-3', source: 'keyword-1', target: 'topic-1', type: 'default' },
+    { id: 'e2-4', source: 'keyword-1', target: 'hotword-1', type: 'default' },
+    { id: 'e4-5', source: 'hotword-1', target: 'content-1', type: 'default' }
+  ]
+};
+
 // 从 localStorage 加载保存的工作流
 function loadWorkflow(): { nodes: Node[]; edges: Edge[] } {
   try {
@@ -19,7 +79,8 @@ function loadWorkflow(): { nodes: Node[]; edges: Edge[] } {
   } catch (e) {
     console.warn('加载工作流失败:', e);
   }
-  return { nodes: [], edges: [] };
+  // 返回默认工作流
+  return DEFAULT_WORKFLOW;
 }
 
 // 保存工作流到 localStorage
