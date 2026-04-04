@@ -2,6 +2,23 @@
 
 ---
 
+## v0.9
+
+**后端 SQLite 持久化**
+
+- 新增 `server/db.py` 数据库模块
+- 表结构：drafts（草稿）、crawl_history（抓取历史）、workflow_configs（工作流配置）
+- API 端点：
+  - `POST /api/drafts` - 保存草稿
+  - `GET /api/drafts` - 获取草稿列表
+  - `GET /api/drafts/{id}` - 获取单个草稿
+  - `DELETE /api/drafts/{id}` - 删除草稿
+  - `GET /api/crawl/history` - 获取抓取历史
+  - `POST /api/crawl/history` - 保存抓取历史
+- 草稿数据存储到 SQLite，刷新不丢失
+
+---
+
 ## v0.8
 
 **一键执行 Run All**

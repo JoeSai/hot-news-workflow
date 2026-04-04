@@ -698,6 +698,116 @@ def call_openai_compatible_api(api_key: str, base_url: str, model: str, prompt: 
         return {"error": f"生成失败: {str(e)}"}
 
 
+# ==================== 草稿管理 API ====================
+
+from pydantic import BaseModel
+from typing import List, Optional
+
+
+class DraftSaveRequest(BaseModel):
+    keywords: List[str]
+    titles: List[str]
+    body: str
+    tags: List[str]
+    style: str
+
+
+class DraftResponse(BaseModel):
+    id: int
+    created_at: str
+    keywords: str
+    titles: str
+    body: str
+    tags: str
+    style: str
+
+
+@app.post("/api/drafts")
+async def save_draft(request: DraftSaveRequest):
+    """保存草稿到数据库"""
+    try:
+        from db import save_draft
+        draft_id = save_draft(
+            keywords=request.keywords,
+            titles=request.titles,
+            body=request.body,
+            tags=request.tags,
+            style=request.style
+        )
+        return {"success": True, "id": draft_id}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/drafts")
+async def list_drafts(limit: int = 50):
+    """获取草稿列表"""
+    try:
+        from db import get_drafts
+        drafts = get_drafts(limit=limit)
+        # 解析 JSON 字段
+        for d in drafts:
+            d["keywords"] = json.loads(d["keywords"])
+            d["titles"] = json.loads(d["titles"])
+            d["tags"] = json.loads(d["tags"])
+        return {"drafts": drafts}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/drafts/{draft_id}")
+async def get_draft(draft_id: int):
+    """获取单个草稿"""
+    try:
+        from db import get_draft as db_get_draft
+        draft = db_get_draft(draft_id)
+        if not draft:
+            return {"error": "草稿不存在"}
+        draft["keywords"] = json.loads(draft["keywords"])
+        draft["titles"] = json.loads(draft["titles"])
+        draft["tags"] = json.loads(draft["tags"])
+        return draft
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.delete("/api/drafts/{draft_id}")
+async def delete_draft(draft_id: int):
+    """删除草稿"""
+    try:
+        from db import delete_draft as db_delete_draft
+        deleted = db_delete_draft(draft_id)
+        return {"success": deleted}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ==================== 抓取历史 API ====================
+
+@app.get("/api/crawl/history")
+async def list_crawl_history(limit: int = 30):
+    """获取抓取历史"""
+    try:
+        from db import get_crawl_history
+        history = get_crawl_history(limit=limit)
+        for h in history:
+            h["news_data"] = json.loads(h["news_data"])
+        return {"history": history}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/crawl/history")
+async def save_crawl_history(platform: str, news_count: int, news_data: List[dict]):
+    """保存抓取历史"""
+    try:
+        from db import save_crawl_history as db_save_history
+        history_id = db_save_history(platform, news_count, news_data)
+        return {"success": True, "id": history_id}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/api/status")
 async def status():
     """检查服务状态"""
