@@ -53,6 +53,9 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
       return;
     }
 
+    // Debug log
+    console.log('Generating with:', { apiType, apiKey: apiKey.substring(0, 10) + '...' });
+
     updateNodeData(id, { generateStatus: 'running' });
 
     try {

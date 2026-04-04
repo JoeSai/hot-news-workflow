@@ -472,6 +472,8 @@ async def generate_content(request: ContentGenerateRequest):
     AI 内容生成接口
     根据热词生成小红书风格内容草稿
     """
+    # Debug log
+    print(f"[DEBUG] Received request: api_type={request.api_type}, has_key={'Yes' if request.api_key else 'No'}")
     try:
         keywords_str = "、".join(request.keywords)
         style_desc = CONTENT_STYLES.get(request.style, CONTENT_STYLES["科普向"])
