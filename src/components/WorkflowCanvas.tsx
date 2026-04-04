@@ -29,9 +29,10 @@ const nodeTypes = {
 };
 
 function WorkflowCanvas() {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, clearWorkflow, loadTemplate } =
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, clearWorkflow, loadTemplate, runAll } =
     useWorkflowStore();
   const [showTemplates, setShowTemplates] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
 
   // 计算下一个可用的节点ID，基于已有节点的最大ID
   const getNextNodeId = (prefix: string) => {
@@ -167,6 +168,26 @@ function WorkflowCanvas() {
 
         {/* Left Panel - Node Palette */}
         <Panel position="top-left" className="bg-white rounded-lg shadow-lg p-2 w-48">
+          {/* Run All Button */}
+          {nodes.length > 0 && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (isRunning) return;
+                setIsRunning(true);
+                try {
+                  await runAll();
+                } finally {
+                  setIsRunning(false);
+                }
+              }}
+              disabled={isRunning}
+              className={`w-full mb-2 px-3 py-2 rounded-md text-sm font-medium text-white transition-colors flex items-center justify-center gap-2
+                ${isRunning ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
+            >
+              {isRunning ? '⏳ 执行中...' : '▶ 一键执行'}
+            </button>
+          )}
           <div className="text-sm font-medium text-gray-700 mb-2">📦 添加节点</div>
           <div className="space-y-1">
             <div className="text-xs text-gray-500 mb-1">数据源</div>

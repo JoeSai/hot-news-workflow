@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import type { NodeData, NewsItem, Keyword, NodeDataType } from '../types/workflow';
+import { runCrawler, extractKeywords, generateContent } from '../services/crawlerApi';
 
 const STORAGE_KEY = 'hot-news-workflow';
 
@@ -168,6 +169,8 @@ interface WorkflowState {
   onConnect: (connection: any) => void;
   clearWorkflow: () => void;
   loadTemplate: (templateId: string) => void;
+  runNode: (nodeId: string) => Promise<void>;
+  runAll: () => Promise<void>;
 }
 
 // 预设工作流模板
@@ -324,6 +327,146 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     if (template) {
       saveWorkflow(template.nodes, template.edges);
       set({ nodes: template.nodes, edges: template.edges });
+    }
+  },
+
+  runNode: async (nodeId: string) => {
+    const state = get();
+    const node = state.nodes.find(n => n.id === nodeId);
+    if (!node) return;
+
+    const nodeData = node.data as NodeData;
+
+    // 获取输入数据
+    const incomingEdges = state.edges.filter(e => e.target === nodeId);
+    let inputNews: NewsItem[] = [];
+    let inputKeywords: Keyword[] = [];
+
+    for (const edge of incomingEdges) {
+      const sourceNode = state.nodes.find(n => n.id === edge.source);
+      if (!sourceNode) continue;
+      const sourceData = sourceNode.data as NodeData;
+      if (sourceData.news?.length) inputNews = sourceData.news;
+      if (sourceData.keywords?.length) inputKeywords = sourceData.keywords;
+    }
+
+    const update = (data: Partial<NodeData>) => {
+      set(s => ({
+        nodes: s.nodes.map(n => n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n)
+      }));
+    };
+
+    switch (node.type) {
+      case 'hotspotCapture': {
+        const platforms = nodeData.platforms || [];
+        const limit = nodeData.limit || 20;
+        if (platforms.length === 0) {
+          update({ status: 'error', error: '请至少选择一个平台' });
+          return;
+        }
+        update({ status: 'running' });
+        try {
+          const result = await runCrawler(platforms, limit);
+          update({ status: 'success', news: result.news, outputType: 'news' });
+        } catch (e) {
+          update({ status: 'error', error: e instanceof Error ? e.message : '抓取失败' });
+        }
+        break;
+      }
+      case 'keywordExtract': {
+        if (inputNews.length === 0) {
+          update({ keywordStatus: 'error', error: '请先抓取热点' });
+          return;
+        }
+        const topK = nodeData.topK || 50;
+        const method = nodeData.method || 'phrase';
+        update({ keywordStatus: 'running' });
+        try {
+          const keywords = await extractKeywords(inputNews, topK, method);
+          update({ keywords, keywordStatus: 'success', outputType: 'keywords' });
+        } catch (e) {
+          update({ keywordStatus: 'error', error: e instanceof Error ? e.message : '提取失败' });
+        }
+        break;
+      }
+      case 'contentGenerate': {
+        const selectedKws = nodeData.selectedKeywords as Keyword[] || [];
+        if (selectedKws.length === 0) {
+          update({ generateStatus: 'error', error: '请先选择热词' });
+          return;
+        }
+        const style = nodeData.style || '科普向';
+        const apiType = nodeData.apiType || 'deepseek';
+        const apiKey = nodeData.apiKey || '';
+        update({ generateStatus: 'running' });
+        try {
+          const result = await generateContent({
+            keywords: selectedKws,
+            newsTitles: inputNews.slice(0, 5).map(n => n.title),
+            style,
+            apiType,
+            apiKey,
+          });
+          update({
+            generateStatus: 'success',
+            draft: result.draft,
+            draftTitles: result.titles,
+            draftBody: result.body,
+            draftTags: result.tags,
+            outputType: 'draft'
+          });
+        } catch (e) {
+          update({ generateStatus: 'error', error: e instanceof Error ? e.message : '生成失败' });
+        }
+        break;
+      }
+    }
+  },
+
+  runAll: async () => {
+    const state = get();
+    // 拓扑排序：从源节点开始
+    const nodeMap = new Map(state.nodes.map(n => [n.id, n]));
+    const inDegree = new Map<string, number>();
+    const adjacency = new Map<string, string[]>();
+
+    // 初始化
+    for (const node of state.nodes) {
+      inDegree.set(node.id, 0);
+      adjacency.set(node.id, []);
+    }
+
+    // 构建图
+    for (const edge of state.edges) {
+      adjacency.get(edge.source)?.push(edge.target);
+      inDegree.set(edge.target, (inDegree.get(edge.target) || 0) + 1);
+    }
+
+    // 找所有源节点（入度为0）
+    const queue: string[] = [];
+    for (const [id, degree] of inDegree) {
+      if (degree === 0) queue.push(id);
+    }
+
+    // 按顺序执行
+    while (queue.length > 0) {
+      const nodeId = queue.shift()!;
+      const node = nodeMap.get(nodeId);
+      if (!node) continue;
+
+      // 只执行有执行逻辑的节点类型
+      if (node.type === 'hotspotCapture' || node.type === 'keywordExtract' || node.type === 'contentGenerate') {
+        await get().runNode(nodeId);
+        // 等待一小段时间让状态更新
+        await new Promise(r => setTimeout(r, 500));
+      }
+
+      // 将后继节点入度-1
+      for (const nextId of adjacency.get(nodeId) || []) {
+        const newDegree = (inDegree.get(nextId) || 1) - 1;
+        inDegree.set(nextId, newDegree);
+        if (newDegree === 0) queue.push(nextId);
+      }
     }
   },
 }));
