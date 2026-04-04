@@ -1,6 +1,7 @@
-import { memo, useState, useMemo } from 'react';
+import { memo, useState, useMemo, useEffect, useRef } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useWorkflowStore, getInputData } from '../../hooks/useWorkflowStore';
+import { generateCoverImage, getGlobalSettings } from '../../services/crawlerApi';
 import type { NodeData, Keyword } from '../../types/workflow';
 
 interface CoverImageNodeProps {
@@ -21,12 +22,49 @@ function CoverImageNode({ id, data }: CoverImageNodeProps) {
   const [subtitle, setSubtitle] = useState<string>((data.coverSubtitle as string) || '');
   const [templateId, setTemplateId] = useState<string>((data.templateId as string) || 'text-card');
   const [colorIndex, setColorIndex] = useState<number>(0);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiImage, setAiImage] = useState<string | null>(null);
+  // v0.19-R2: 追踪用户是否手动编辑过标题，避免覆盖
+  const userEditedTitle = useRef(!!(data.coverTitle as string));
 
-  // 从连线获取关键词
+  // v0.19-R2: 从连线获取关键词（同时支持 keywords 和 selectedKeywords）
   const inputKeywords = useMemo(() => {
-    const keywords = getInputData<Keyword>(id, nodes, edges, 'keywords');
-    return keywords || [];
+    // 优先读 selectedKeywords（topicRecommend/hotwordList），fallback 读 keywords
+    const fromSelected = getInputData<Keyword>(id, nodes, edges, 'selectedKeywords');
+    if (fromSelected?.length) return fromSelected;
+    const fromKeywords = getInputData<Keyword>(id, nodes, edges, 'keywords');
+    return fromKeywords || [];
   }, [id, nodes, edges]);
+
+  // v0.19-R2: 上游关键词自动填充标题（仅首次自动填充，不覆盖用户已编辑内容）
+  useEffect(() => {
+    if (inputKeywords.length > 0 && !userEditedTitle.current && !title) {
+      const topWord = inputKeywords[0]?.word || '';
+      if (topWord) setTitle(topWord);
+    }
+  }, [inputKeywords]);
+
+  const handleTitleChange = (val: string) => {
+    userEditedTitle.current = true;
+    setTitle(val);
+  };
+
+  // v0.19-R1: AI 生成封面
+  const handleAiGenerate = async () => {
+    if (!title) return;
+    setAiGenerating(true);
+    try {
+      const settings = await getGlobalSettings();
+      const prompt = `AI科技感封面图，标题：${title}${subtitle ? '，副标题：' + subtitle : ''}，小红书风格，高清`;
+      const apiKey = settings.api_key || undefined;
+      const base64 = await generateCoverImage(prompt, "3:4", apiKey);
+      setAiImage(`data:image/jpeg;base64,${base64}`);
+    } catch (e) {
+      console.error('AI生成失败', e);
+    } finally {
+      setAiGenerating(false);
+    }
+  };
 
   const selectedTemplate = TEMPLATES.find(t => t.id === templateId) || TEMPLATES[0];
   const colors = [
@@ -182,8 +220,8 @@ function CoverImageNode({ id, data }: CoverImageNodeProps) {
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="输入封面标题..."
+            onChange={(e) => handleTitleChange(e.target.value)}
+            placeholder={inputKeywords.length > 0 ? "已有热词，自动填入" : "输入封面标题..."}
             className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
             onClick={(e) => e.stopPropagation()}
           />
@@ -220,8 +258,29 @@ function CoverImageNode({ id, data }: CoverImageNodeProps) {
         {/* 预览 */}
         <div>
           <label className="text-xs font-medium text-gray-600 mb-2 block">预览</label>
-          {renderPreview()}
+          {aiImage ? (
+            <div className="relative">
+              <img src={aiImage} alt="AI封面" className="w-full rounded-lg" />
+              <button
+                onClick={() => setAiImage(null)}
+                className="absolute top-1 right-1 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded"
+              >
+                ×
+              </button>
+            </div>
+          ) : (
+            renderPreview()
+          )}
         </div>
+
+        {/* AI 生成 */}
+        <button
+          onClick={handleAiGenerate}
+          disabled={aiGenerating || !title}
+          className="w-full py-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded font-medium text-sm hover:opacity-90 disabled:bg-gray-400"
+        >
+          {aiGenerating ? '🤖 AI 生成中...' : '🤖 AI 生成封面'}
+        </button>
 
         {/* 导出 */}
         <button
@@ -234,7 +293,7 @@ function CoverImageNode({ id, data }: CoverImageNodeProps) {
 
         {inputKeywords.length === 0 && (
           <div className="text-xs text-orange-500 text-center">
-            ← 可连接关键词提取节点获取标题建议
+            ← 连接选题推荐或热词列表自动填入标题
           </div>
         )}
       </div>

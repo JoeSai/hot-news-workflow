@@ -249,6 +249,22 @@ export async function deleteContentRecord(id: number): Promise<void> {
   if (!response.ok) throw new Error(`API error: ${response.status}`);
 }
 
+// ==================== 封面图生成 API ====================
+
+export async function generateCoverImage(prompt: string, aspectRatio: string = "3:4", apiKey?: string): Promise<string> {
+  const payload: Record<string, unknown> = { prompt, aspect_ratio: aspectRatio };
+  if (apiKey) payload.api_key = apiKey;
+  const response = await fetchWithTimeout(`${API_BASE}/cover/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }, 120000);
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error || '生成失败');
+  return data.image_base64 as string;
+}
+
 export async function getContentStats(): Promise<ContentStats> {
   const response = await fetchWithTimeout(`${API_BASE}/content-records/stats/summary`);
   if (!response.ok) throw new Error(`API error: ${response.status}`);

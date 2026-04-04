@@ -616,6 +616,41 @@ async def save_settings(request: GlobalSettingsRequest):
         return {"success": False, "error": str(e)}
 
 
+
+@app.post("/api/cover/generate", response_model=dict)
+async def generate_cover_image(request: dict):
+    """使用 MiniMax image-01 生成封面图"""
+    try:
+        import os as _os
+
+        prompt = request.get("prompt", "")
+        aspect_ratio = request.get("aspect_ratio", "3:4")
+        api_key = request.get("api_key") or _os.environ.get("MINIMAX_API_KEY", "") or _os.environ.get("LLM_API_KEY", "")
+        if not api_key:
+            return {"success": False, "error": "请提供 API Key"}
+
+        url = "https://api.minimaxi.com/v1/image_generation"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        }
+        payload = {
+            "model": "image-01",
+            "prompt": prompt,
+            "aspect_ratio": aspect_ratio,
+            "response_format": "base64",
+        }
+        resp = requests.post(url, headers=headers, json=payload, timeout=120)
+        resp.raise_for_status()
+        data = resp.json()
+        images = data.get("data", {}).get("image_base64", [])
+        if not images:
+            return {"success": False, "error": "未返回图片"}
+        return {"success": True, "image_base64": images[0]}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def parse_draft_structured(draft: str) -> dict:
     """解析草稿文本为结构化数据"""
     if not draft:
