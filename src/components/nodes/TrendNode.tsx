@@ -1,4 +1,4 @@
-import { memo, useState, useMemo, useEffect } from 'react';
+import { memo, useState, useMemo, useEffect, useCallback } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useWorkflowStore, getInputData } from '../../hooks/useWorkflowStore';
 import type { NodeData, Keyword } from '../../types/workflow';
@@ -35,26 +35,12 @@ function TrendNode({ id }: TrendNodeProps) {
     return inputKeywords.slice(0, 10);
   }, [inputKeywords]);
 
-  // 追踪的关键词变化时自动加载趋势
-  useEffect(() => {
-    if (selectedWords.length > 0) {
-      loadTrends();
-    }
-  }, [selectedWords, days]);
-
-  // 自动选中前5个关键词
-  useEffect(() => {
-    if (trackableKeywords.length > 0 && selectedWords.length === 0) {
-      setSelectedWords(trackableKeywords.slice(0, 5).map(k => k.word));
-    }
-  }, [trackableKeywords]);
-
-  const loadTrends = async () => {
-    if (selectedWords.length === 0) return;
+  const loadTrends = useCallback(async (words: string[], d: number) => {
+    if (words.length === 0) return;
     setLoading(true);
     setError(null);
     try {
-      const trendData = await getKeywordTrends(selectedWords, days);
+      const trendData = await getKeywordTrends(words, d);
       const items: TrendItem[] = [];
       for (const [word, points] of Object.entries(trendData)) {
         const latest = points.length > 0 ? points[points.length - 1].weight : 0;
@@ -77,7 +63,21 @@ function TrendNode({ id }: TrendNodeProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // 追踪的关键词变化时自动加载趋势
+  useEffect(() => {
+    if (selectedWords.length > 0) {
+      loadTrends(selectedWords, days);
+    }
+  }, [selectedWords, days, loadTrends]);
+
+  // 自动选中前5个关键词
+  useEffect(() => {
+    if (trackableKeywords.length > 0 && selectedWords.length === 0) {
+      setSelectedWords(trackableKeywords.slice(0, 5).map(k => k.word));
+    }
+  }, [trackableKeywords]);
 
   const toggleWord = (word: string) => {
     setSelectedWords(prev =>
@@ -194,7 +194,7 @@ function TrendNode({ id }: TrendNodeProps) {
 
         {/* 刷新按钮 */}
         <button
-          onClick={loadTrends}
+          onClick={() => loadTrends(selectedWords, days)}
           disabled={loading || selectedWords.length === 0}
           className="w-full text-xs py-1.5 bg-violet-600 text-white rounded hover:bg-violet-700 disabled:bg-gray-400"
         >

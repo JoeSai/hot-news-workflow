@@ -51,9 +51,7 @@ export async function runCrawler(platforms: string[], limit: number = 30): Promi
 }
 
 export async function parseHotNewsFile(): Promise<NewsItem[]> {
-  const response = await fetch(`${API_BASE}/parse`, {
-    method: 'GET',
-  });
+  const response = await fetchWithTimeout(`${API_BASE}/parse`, { method: 'GET' });
 
   if (!response.ok) {
     throw new Error(`API error: ${response.status}`);
@@ -73,11 +71,11 @@ export async function extractKeywords(
   topK: number = 50,
   method: string = 'phrase'
 ): Promise<Keyword[]> {
-  const response = await fetch(`${API_BASE}/keywords`, {
+  const response = await fetchWithTimeout(`${API_BASE}/keywords`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ news, top_k: topK, method }),
-  });
+  }, 30000);
 
   if (!response.ok) {
     throw new Error(`API error: ${response.status}`);
@@ -158,7 +156,7 @@ export interface KeywordTrend {
 }
 
 export async function saveKeywordTrends(keywords: Keyword[], source: string = 'crawl'): Promise<{ success: boolean; saved: number }> {
-  const response = await fetch(`${API_BASE}/keywords/trend`, {
+  const response = await fetchWithTimeout(`${API_BASE}/keywords/trend`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ keywords, source }),
@@ -168,7 +166,7 @@ export async function saveKeywordTrends(keywords: Keyword[], source: string = 'c
 }
 
 export async function getKeywordTrends(keywords: string[], days: number = 7): Promise<Record<string, TrendDataPoint[]>> {
-  const response = await fetch(`${API_BASE}/keywords/trend?keywords=${keywords.join(',')}&days=${days}`);
+  const response = await fetchWithTimeout(`${API_BASE}/keywords/trend?keywords=${keywords.join(',')}&days=${days}`);
   if (!response.ok) throw new Error(`API error: ${response.status}`);
   const data = await response.json();
   return data.trends as Record<string, TrendDataPoint[]>;

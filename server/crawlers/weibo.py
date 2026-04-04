@@ -14,53 +14,101 @@ class WeiboSpider:
     """微博热搜爬虫"""
     source_name = "微博"
     headers = {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1",
-        "Accept": "application/json, text/plain, */*",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Language": "zh-CN,zh;q=0.9",
-        "Referer": "https://weibo.com/",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
     }
 
-    def request(self, method="GET", url=None, headers=None, timeout=15):
+    def request(self, url=None, timeout=15):
         """同步请求"""
-        request_headers = headers or self.headers
-        request_headers = {**request_headers, "User-Agent": self.headers["User-Agent"]}
-        response = requests.request(method=method, url=url, headers=request_headers, timeout=timeout)
+        headers = {**self.headers, "User-Agent": self.headers["User-Agent"]}
+        response = requests.get(url=url, headers=headers, timeout=timeout)
         return response
 
     def get_news_list(self, limit=20) -> List[Dict]:
-        """获取微博热搜榜（移动版）"""
+        """获取微博热搜榜（多种方式）"""
+        # 方式1：尝试移动端 API
+        result = self._get_via_mobile_api(limit)
+        if result:
+            return result
+
+        # 方式2：尝试网页抓取
+        result = self._get_via_web_scrape(limit)
+        if result:
+            return result
+
+        return []
+
+    def _get_via_mobile_api(self, limit=20) -> List[Dict]:
+        """通过移动端 API 获取"""
         try:
-            url = "https://weibo.com/ajax/side/hotSearch"
-            response = self.request(url=url, headers=self.headers)
+            # 尝试移动端 API（可能需要 Cookie）
+            headers = {
+                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1",
+                "Accept": "application/json, text/plain, */*",
+                "Accept-Language": "zh-CN,zh;q=0.9",
+                "Referer": "https://m.weibo.cn/",
+            }
+            response = requests.get(
+                url="https://m.weibo.cn/api/container/getIndex?type=2&queryVal=微博热搜榜&containerid=100103type%3D2%26q%3D%E5%BE%AE%E5%8D%9A%E7%83%AD%E6%90%9C%E6%A6%9C&page=1",
+                headers=headers,
+                timeout=10
+            )
             data = response.json()
-
-            if data.get("ok") != 1:
-                return []
-
-            hot_list = data.get("data", {}).get("realtime", [])
-
+            cards = data.get("data", {}).get("cards", [])
             result = []
-            for item in hot_list[:limit]:
-                word = item.get("word", "")
-                if not word:
+            for card in cards:
+                title = card.get("card_title", "")
+                if not title:
                     continue
-
-                num = item.get("num", 0)
-
                 result.append({
-                    "title": word,
-                    "url": f"https://s.weibo.com/weibo?q={quote(word)}",
+                    "title": title,
+                    "url": f"https://s.weibo.com/weibo?q={quote(title)}",
                     "img_url": "",
                     "pub_time": datetime.now().strftime("%Y-%m-%d"),
                     "source": self.source_name,
                     "category": "热搜",
                     "channel": "微博热搜",
-                    "hot_value": num
                 })
+                if len(result) >= limit:
+                    break
+            return result
+        except Exception as e:
+            print(f"微博移动API获取失败: {e}")
+            return []
+
+    def _get_via_web_scrape(self, limit=20) -> List[Dict]:
+        """通过网页抓取获取微博热搜"""
+        try:
+            response = self.request(url="https://s.weibo.com/top/summary", timeout=10)
+            html = etree.HTML(response.text)
+
+            # 尝试多种选择器
+            items = html.xpath('//table//tr | //div[@class="hot_item"] | //div[contains(@class, "list-item")]')[:limit]
+
+            result = []
+            for item in items:
+                title_elem = item.xpath('.//a//text() | .//span[@class="title"]//text()')
+                title = "".join([t.strip() for t in title_elem if t.strip()])
+                if not title:
+                    continue
+                result.append({
+                    "title": title,
+                    "url": "https://s.weibo.com/weibo?q=" + quote(title),
+                    "img_url": "",
+                    "pub_time": datetime.now().strftime("%Y-%m-%d"),
+                    "source": self.source_name,
+                    "category": "热搜",
+                    "channel": "微博热搜",
+                })
+                if len(result) >= limit:
+                    break
 
             return result
         except Exception as e:
-            print(f"微博热搜获取失败: {e}")
+            print(f"微博网页抓取失败: {e}")
             return []
 
     def get_news_info(self, item: Dict, category: str = None) -> Optional[Dict]:

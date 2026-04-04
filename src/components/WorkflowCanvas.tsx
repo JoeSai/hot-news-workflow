@@ -135,6 +135,36 @@ function WorkflowCanvas() {
     addNode(newNode);
   }, [addNode]);
 
+  const addTrendNode = useCallback(() => {
+    const newNode = {
+      id: getNextNodeId('trend'),
+      type: 'trend',
+      position: { x: 750, y: 500 },
+      data: {},
+    };
+    addNode(newNode);
+  }, [addNode]);
+
+  const addContentRecordNode = useCallback(() => {
+    const newNode = {
+      id: getNextNodeId('record'),
+      type: 'contentRecord',
+      position: { x: 1100, y: 500 },
+      data: {},
+    };
+    addNode(newNode);
+  }, [addNode]);
+
+  const addCoverImageNode = useCallback(() => {
+    const newNode = {
+      id: getNextNodeId('cover'),
+      type: 'coverImage',
+      position: { x: 1100, y: 100 },
+      data: {},
+    };
+    addNode(newNode);
+  }, [addNode]);
+
   return (
     <div className="w-full h-full">
       <ReactFlow
@@ -165,6 +195,12 @@ function WorkflowCanvas() {
                 return '#6366f1';
               case 'topicRecommend':
                 return '#ec4899';
+              case 'trend':
+                return '#7c3aed';
+              case 'contentRecord':
+                return '#059669';
+              case 'coverImage':
+                return '#db2777';
               default:
                 return '#888';
             }
@@ -256,6 +292,32 @@ function WorkflowCanvas() {
             >
               <span>📰</span>
               <span>热点详情</span>
+            </button>
+            <button
+              type="button"
+              onClick={addTrendNode}
+              className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-violet-50 hover:bg-violet-100 rounded-md transition-colors"
+            >
+              <span>📈</span>
+              <span>热度趋势</span>
+            </button>
+
+            <div className="text-xs text-gray-500 mt-3 mb-1">效果追踪</div>
+            <button
+              type="button"
+              onClick={addContentRecordNode}
+              className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
+            >
+              <span>📊</span>
+              <span>内容效果记录</span>
+            </button>
+            <button
+              type="button"
+              onClick={addCoverImageNode}
+              className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-rose-50 hover:bg-rose-100 rounded-md transition-colors"
+            >
+              <span>🖼️</span>
+              <span>封面图辅助</span>
             </button>
           </div>
 

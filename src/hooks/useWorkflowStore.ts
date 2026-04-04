@@ -257,6 +257,47 @@ export const WORKFLOW_TEMPLATES = [
       { id: 'e3-4', source: 'hotword-1', target: 'content-1' },
     ],
   },
+  {
+    id: 'analytics',
+    name: '📊 效果追踪',
+    desc: '热点抓取 → 关键词提取 → 热度趋势 + 效果记录',
+    nodes: [
+      { id: 'hotspot-1', type: 'hotspotCapture', position: { x: 50, y: 200 }, data: { platforms: ['wangyi', 'ithome', 'toutiao', 'zhihu'], limit: 20, status: 'idle', outputType: 'news' } },
+      { id: 'keyword-1', type: 'keywordExtract', position: { x: 400, y: 200 }, data: { topK: 50, method: 'phrase', keywordStatus: 'idle', outputType: 'keywords' } },
+      { id: 'trend-1', type: 'trend', position: { x: 750, y: 200 }, data: {} },
+      { id: 'record-1', type: 'contentRecord', position: { x: 1100, y: 200 }, data: {} },
+    ],
+    edges: [
+      { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
+      { id: 'e2-3', source: 'keyword-1', target: 'trend-1' },
+    ],
+  },
+  {
+    id: 'full-workflow',
+    name: '✨ 全功能版',
+    desc: '完整工作流：抓取 → 提取 → 词云/趋势/详情 → 生成 → 记录',
+    nodes: [
+      { id: 'hotspot-1', type: 'hotspotCapture', position: { x: 50, y: 200 }, data: { platforms: ['wangyi', 'ithome', 'toutiao', 'zhihu'], limit: 20, status: 'idle', outputType: 'news' } },
+      { id: 'keyword-1', type: 'keywordExtract', position: { x: 400, y: 200 }, data: { topK: 50, method: 'phrase', keywordStatus: 'idle', outputType: 'keywords' } },
+      { id: 'wordcloud-1', type: 'wordCloud', position: { x: 750, y: 50 }, data: { wordCloudTopK: 50, wordCloudStatus: 'idle' } },
+      { id: 'trend-1', type: 'trend', position: { x: 750, y: 250 }, data: {} },
+      { id: 'hotword-1', type: 'hotwordList', position: { x: 750, y: 450 }, data: { selectedKeywords: [], outputType: 'keywords' } },
+      { id: 'newsdetail-1', type: 'newsDetail', position: { x: 750, y: 650 }, data: { newsDetailStatus: 'idle' } },
+      { id: 'topic-1', type: 'topicRecommend', position: { x: 1100, y: 120 }, data: {} },
+      { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 350 }, data: { style: '科普向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
+      { id: 'record-1', type: 'contentRecord', position: { x: 1100, y: 550 }, data: {} },
+    ],
+    edges: [
+      { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
+      { id: 'e2-3', source: 'keyword-1', target: 'wordcloud-1' },
+      { id: 'e2-4', source: 'keyword-1', target: 'trend-1' },
+      { id: 'e2-5', source: 'keyword-1', target: 'hotword-1' },
+      { id: 'e2-6', source: 'keyword-1', target: 'newsdetail-1' },
+      { id: 'e2-7', source: 'keyword-1', target: 'topic-1' },
+      { id: 'e5-8', source: 'hotword-1', target: 'content-1' },
+      { id: 'e8-9', source: 'content-1', target: 'record-1' },
+    ],
+  },
 ];
 
 const savedWorkflow = loadWorkflow();
@@ -445,8 +486,6 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       // 只执行有执行逻辑的节点类型
       if (node.type === 'hotspotCapture' || node.type === 'keywordExtract' || node.type === 'contentGenerate') {
         await get().runNode(nodeId);
-        // 等待一小段时间让状态更新
-        await new Promise(r => setTimeout(r, 500));
       }
 
       // hotwordList 需要用户交互，runAll 时自动选择 TOP 5 关键词

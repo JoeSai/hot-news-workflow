@@ -33,6 +33,12 @@ class PengPaiSpider:
         {"name": "科技", "code": "25492", "classify": "科技"},
     ]
 
+    def request(self, url=None, method="POST", json=None, timeout=15):
+        """同步请求"""
+        headers = {**self.headers, "User-Agent": self.headers["User-Agent"]}
+        response = requests.request(method=method, url=url, headers=headers, json=json, timeout=timeout)
+        return response
+
     def get_news_list(self, limit=20):
         """获取澎湃新闻列表"""
         all_news = []
@@ -48,9 +54,8 @@ class PengPaiSpider:
                     "pageNum": 1,
                 }
 
-                response = requests.post(
-                    "https://api.thepaper.cn/contentapi/nodeCont/getByNodeIdPortal",
-                    headers=self.headers,
+                response = self.request(
+                    url="https://api.thepaper.cn/contentapi/nodeCont/getByNodeIdPortal",
                     json=json_data,
                     timeout=10
                 )

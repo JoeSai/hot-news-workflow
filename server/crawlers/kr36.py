@@ -38,9 +38,12 @@ class Spider36Kr:
                 title = item.find('title')
                 link = item.find('link')
                 pub_date = item.find('pubDate')
+                # 清理 URL（移除可能的空白字符）
+                url = link.text.strip() if link is not None and link.text else ""
+                url = url.strip() if url else ""
                 result.append({
                     "title": title.text.strip() if title is not None and title.text else "",
-                    "url": link.text.strip() if link is not None and link.text else "",
+                    "url": url,
                     "img_url": "",
                     "pub_time": pub_date.text[:10] if pub_date is not None and pub_date.text else datetime.now().strftime("%Y-%m-%d"),
                     "source": self.source_name,

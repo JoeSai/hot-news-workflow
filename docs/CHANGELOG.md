@@ -2,6 +2,30 @@
 
 ---
 
+## v0.13
+
+**技术债务修复 & 平台恢复**
+
+**Bug Fixes:**
+- **F1: 新节点加入面板 + 模板更新** - 新增「📊 效果追踪」「✨ 全功能版」两个工作流模板；节点面板添加热度趋势、内容效果记录、封面图辅助按钮
+- **F2: 输入验证** - 后端 API 添加 Pydantic Field 约束（ge=0, max_length 等），Query 参数添加约束（ge=1, le=500）
+- **F3: fetchWithTimeout 补全** - `parseHotNewsFile`、`extractKeywords`、`saveKeywordTrends`、`getKeywordTrends` 添加超时支持
+- **F4: 删除 500ms setTimeout** - `runAll` 函数移除无意义的 500ms 等待，修复慢速网络下数据不一致
+- **F5: TrendNode useEffect 依赖** - 重组代码顺序，`loadTrends` 用 `useCallback` 定义后供 `useEffect` 调用
+- **F6: CORS 收紧** - `allow_methods` 从 `["*"]` 改为 `["GET", "POST", "DELETE", "OPTIONS"]`，`allow_headers` 仅允许 `["Content-Type"]`
+
+**P2.4 平台恢复:**
+- 启用全部平台（澎湃、微博、36氪、量子位、机器之心）
+- 爬虫重构：量子位/机器之心改用首页抓取 + RSS/API 备用
+- 微博改用移动端 API + 网页抓取备用
+- 36氪 RSS 解析修复
+
+**F1 新模板:**
+- 新增「📊 效果追踪」模板（热点 → 关键词 → 趋势 → 记录）
+- 新增「✨ 全功能版」模板（完整工作流示例）
+
+---
+
 ## v0.12
 
 **封面图辅助 & P2.2 内容效果记录**

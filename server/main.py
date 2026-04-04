@@ -25,19 +25,26 @@ _USER_DICT = Path(__file__).parent / "ai_dict.txt"
 if _USER_DICT.exists():
     jieba.load_userdict(str(_USER_DICT))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 app = FastAPI(title="Hot News Workflow API")
 
-# CORS - 允许所有本地开发端口
+# CORS - 允许本地开发端口
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176", "http://localhost:5177", "http://127.0.0.1:5173", "http://127.0.0.1:5174", "http://127.0.0.1:5175", "http://127.0.0.1:5176", "http://127.0.0.1:5177"],
+    allow_origins=[
+        "http://localhost:5173", "http://localhost:5174", "http://localhost:5175",
+        "http://localhost:5176", "http://localhost:5177", "http://localhost:5178",
+        "http://localhost:5179",
+        "http://127.0.0.1:5173", "http://127.0.0.1:5174", "http://127.0.0.1:5175",
+        "http://127.0.0.1:5176", "http://127.0.0.1:5177", "http://127.0.0.1:5178",
+        "http://127.0.0.1:5179",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 # 数据目录 - 支持 macOS/Linux
@@ -744,7 +751,7 @@ async def save_draft(request: DraftSaveRequest):
 
 
 @app.get("/api/drafts")
-async def list_drafts(limit: int = 50):
+async def list_drafts(limit: int = Query(50, ge=1, le=500)):
     """获取草稿列表"""
     try:
         from db import get_drafts
@@ -789,7 +796,7 @@ async def delete_draft(draft_id: int):
 # ==================== 抓取历史 API ====================
 
 @app.get("/api/crawl/history")
-async def list_crawl_history(limit: int = 30):
+async def list_crawl_history(limit: int = Query(30, ge=1, le=500)):
     """获取抓取历史"""
     try:
         from db import get_crawl_history
@@ -831,7 +838,7 @@ async def save_keyword_trends(request: KeywordTrendRequest):
 
 
 @app.get("/api/keywords/trend")
-async def get_keyword_trends(keywords: str = None, days: int = 7):
+async def get_keyword_trends(keywords: str = None, days: int = Query(7, ge=1, le=90)):
     """获取关键词趋势数据
 
     Query params:
@@ -856,11 +863,11 @@ class ContentRecordRequest(BaseModel):
     style: str = ""
     published_at: str = ""
     platform: str = "小红书"
-    likes: int = 0
-    collects: int = 0
-    comments: int = 0
-    shares: int = 0
-    notes: str = ""
+    likes: int = Field(0, ge=0, le=999999)
+    collects: int = Field(0, ge=0, le=999999)
+    comments: int = Field(0, ge=0, le=999999)
+    shares: int = Field(0, ge=0, le=999999)
+    notes: str = Field("", max_length=1000)
 
 
 @app.post("/api/content-records")
@@ -887,7 +894,7 @@ async def save_content_record_api(request: ContentRecordRequest):
 
 
 @app.get("/api/content-records")
-async def list_content_records(limit: int = 50):
+async def list_content_records(limit: int = Query(50, ge=1, le=500)):
     """获取内容效果记录列表"""
     try:
         from db import get_content_records as db_get
