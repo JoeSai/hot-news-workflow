@@ -8,6 +8,7 @@ from typing import List, Dict, Optional
 from urllib.parse import quote
 
 import requests
+from lxml import etree
 
 
 class WeiboSpider:

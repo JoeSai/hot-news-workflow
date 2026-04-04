@@ -91,8 +91,9 @@ class PengPaiSpider:
             response = requests.get(article_url, headers=self.headers, timeout=10)
             content_html = etree.HTML(response.text)
 
-            img_list = content_html.xpath('//*[@id="__next"]/main/div[4]/div[1]/div[1]/div/div[2]/img/@src')
-            txt_elements = content_html.xpath('//*[@id="__next"]/main/div[4]/div[1]/div[1]/div/div[2]/p')
+            # 使用更灵活的选择器，兼容页面结构变化
+            img_list = content_html.xpath('//article//img/@src | //div[contains(@class,"article")]//img/@src | //main//img/@src')
+            txt_elements = content_html.xpath('//article//p | //div[contains(@class,"article")]//p | //main//p')
 
             article_info = ""
             for p in txt_elements:

@@ -490,13 +490,14 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
       // hotwordList 需要用户交互，runAll 时自动选择 TOP 5 关键词
       if (node.type === 'hotwordList') {
-        const nodeData = node.data as NodeData;
-        const selectedKws = nodeData.selectedKeywords as Keyword[] || [];
+        const currentState = get();
+        const currentNodeData = currentState.nodes.find(n => n.id === nodeId)?.data as NodeData;
+        const selectedKws = currentNodeData?.selectedKeywords as Keyword[] || [];
         if (selectedKws.length === 0) {
           // 从输入边获取关键词（上游是 keywordExtract）
-          const incomingEdges = state.edges.filter(e => e.target === nodeId);
+          const incomingEdges = currentState.edges.filter(e => e.target === nodeId);
           for (const edge of incomingEdges) {
-            const sourceNode = state.nodes.find(n => n.id === edge.source);
+            const sourceNode = currentState.nodes.find(n => n.id === edge.source);
             if (sourceNode) {
               const sourceData = sourceNode.data as NodeData;
               const keywords = sourceData.keywords as Keyword[] || [];

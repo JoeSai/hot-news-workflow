@@ -41,8 +41,9 @@ function WorkflowCanvas() {
   const [isRunning, setIsRunning] = useState(false);
 
   // 计算下一个可用的节点ID，基于已有节点的最大ID
-  const getNextNodeId = (prefix: string) => {
-    const existingIds = nodes
+  const getNextNodeId = useCallback((prefix: string) => {
+    const currentNodes = useWorkflowStore.getState().nodes;
+    const existingIds = currentNodes
       .filter(n => n.id.startsWith(prefix))
       .map(n => {
         const match = n.id.match(/(\d+)$/);
@@ -50,7 +51,7 @@ function WorkflowCanvas() {
       });
     const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
     return `${prefix}-${maxId + 1}`;
-  };
+  }, []);
 
   const addHotspotCaptureNode = useCallback(() => {
     const newNode = {
