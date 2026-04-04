@@ -172,7 +172,10 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
             <label className="text-xs font-medium text-gray-600 mb-1 block">内容风格</label>
             <select
               value={style}
-              onChange={(e) => setStyle(e.target.value)}
+              onChange={(e) => {
+                setStyle(e.target.value);
+                updateNodeData(id, { style: e.target.value });
+              }}
               className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
               onClick={(e) => e.stopPropagation()}
             >
@@ -189,7 +192,10 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
           <input
             type="password"
             value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
+            onChange={(e) => {
+              setApiKey(e.target.value);
+              updateNodeData(id, { apiKey: e.target.value });
+            }}
             placeholder="输入 API Key"
             className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm"
             onClick={(e) => e.stopPropagation()}
