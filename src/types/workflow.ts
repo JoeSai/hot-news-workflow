@@ -101,4 +101,8 @@ export interface NodeData extends Record<string, unknown> {
   style?: string;
   apiType?: string;
   apiKey?: string;
+
+  // 趋势节点
+  trendStatus?: 'idle' | 'loading' | 'success' | 'error';
+  trendDays?: number;
 }

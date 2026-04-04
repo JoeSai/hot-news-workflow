@@ -808,6 +808,41 @@ async def save_crawl_history(platform: str, news_count: int, news_data: List[dic
         return {"error": str(e)}
 
 
+# ==================== 关键词趋势 API ====================
+
+class KeywordTrendRequest(BaseModel):
+    keywords: List[dict]
+    source: str = "crawl"
+
+
+@app.post("/api/keywords/trend")
+async def save_keyword_trends(request: KeywordTrendRequest):
+    """保存关键词趋势快照（每日调用）"""
+    try:
+        from db import save_keyword_trends as db_save_trends
+        saved = db_save_trends(request.keywords, request.source)
+        return {"success": True, "saved": saved}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/keywords/trend")
+async def get_keyword_trends(keywords: str = None, days: int = 7):
+    """获取关键词趋势数据
+
+    Query params:
+        keywords: 逗号分隔的关键词列表，如 "AI,大模型,ChatGPT"
+        days: 查询天数，默认7天
+    """
+    try:
+        from db import get_keyword_trends as db_get_trends
+        kw_list = [k.strip() for k in keywords.split(",")] if keywords else None
+        trends = db_get_trends(kw_list, days)
+        return {"success": True, "trends": trends, "days": days}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/api/status")
 async def status():
     """检查服务状态"""

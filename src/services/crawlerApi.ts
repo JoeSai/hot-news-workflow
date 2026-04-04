@@ -123,3 +123,34 @@ export async function generateContent(params: GenerateContentParams): Promise<Ge
     tags: (data.tags as string[]) || [],
   };
 }
+
+// ==================== 关键词趋势 API ====================
+
+export interface TrendDataPoint {
+  date: string;
+  weight: number;
+  count: number;
+}
+
+export interface KeywordTrend {
+  word: string;
+  data: TrendDataPoint[];
+  status?: 'rising' | 'falling' | 'exploding' | 'stable';
+}
+
+export async function saveKeywordTrends(keywords: Keyword[], source: string = 'crawl'): Promise<{ success: boolean; saved: number }> {
+  const response = await fetch(`${API_BASE}/keywords/trend`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keywords, source }),
+  });
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  return response.json();
+}
+
+export async function getKeywordTrends(keywords: string[], days: number = 7): Promise<Record<string, TrendDataPoint[]>> {
+  const response = await fetch(`${API_BASE}/keywords/trend?keywords=${keywords.join(',')}&days=${days}`);
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  const data = await response.json();
+  return data.trends as Record<string, TrendDataPoint[]>;
+}

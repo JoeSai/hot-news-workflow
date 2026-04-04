@@ -57,6 +57,19 @@ def init_db():
         )
     """)
 
+    # 关键词趋势表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS keyword_trends (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recorded_date TEXT NOT NULL,
+            keyword TEXT NOT NULL,
+            weight REAL NOT NULL,
+            count INTEGER DEFAULT 1,
+            source TEXT NOT NULL,
+            UNIQUE(recorded_date, keyword)
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -152,6 +165,91 @@ def get_workflow_config(name: str) -> Optional[Dict]:
     row = cursor.fetchone()
     conn.close()
     return json.loads(row["config"]) if row else None
+
+
+def save_keyword_trends(keywords: List[Dict], source: str = "crawl") -> int:
+    """保存关键词趋势快照（按日期）"""
+    conn = get_db()
+    cursor = conn.cursor()
+    today = datetime.now().strftime("%Y-%m-%d")
+    saved = 0
+    for kw in keywords:
+        cursor.execute(
+            """INSERT OR REPLACE INTO keyword_trends
+               (recorded_date, keyword, weight, count, source)
+               VALUES (?, ?, ?, ?, ?)""",
+            (today, kw.get("word", kw.get("keyword", "")), kw.get("weight", 0), kw.get("count", 1), source)
+        )
+        saved += 1
+    conn.commit()
+    conn.close()
+    return saved
+
+
+def get_keyword_trends(keywords: List[str] = None, days: int = 7) -> Dict[str, List[Dict]]:
+    """获取关键词趋势数据
+
+    Args:
+        keywords: 要查询的关键词列表，为空则返回所有关键词
+        days: 查询最近天数
+
+    Returns:
+        { "keyword1": [{"date": "2026-04-01", "weight": 0.8, "count": 5}, ...], ... }
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # 计算起始日期
+    start_date = datetime.now().strftime("%Y-%m-%d")
+
+    if keywords:
+        placeholders = ",".join(["?"] * len(keywords))
+        cursor.execute(
+            f"""SELECT keyword, recorded_date, weight, count
+                FROM keyword_trends
+                WHERE keyword IN ({placeholders})
+                  AND recorded_date >= date('now', ?)
+                ORDER BY recorded_date ASC""",
+            keywords + [f"-{days} days"]
+        )
+    else:
+        # 返回最近有数据的关键词
+        cursor.execute(
+            """SELECT DISTINCT keyword FROM keyword_trends
+               WHERE recorded_date >= date('now', ?)
+               ORDER BY keyword""",
+            (f"-{days} days",)
+        )
+        keyword_rows = cursor.fetchall()
+        if not keyword_rows:
+            conn.close()
+            return {}
+        keywords = [row["keyword"] for row in keyword_rows]
+        placeholders = ",".join(["?"] * len(keywords))
+        cursor.execute(
+            f"""SELECT keyword, recorded_date, weight, count
+                FROM keyword_trends
+                WHERE keyword IN ({placeholders})
+                  AND recorded_date >= date('now', ?)
+                ORDER BY recorded_date ASC""",
+            keywords + [f"-{days} days"]
+        )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    # 按关键词分组
+    result: Dict[str, List[Dict]] = {kw: [] for kw in keywords}
+    for row in rows:
+        kw = row["keyword"]
+        if kw in result:
+            result[kw].append({
+                "date": row["recorded_date"],
+                "weight": row["weight"],
+                "count": row["count"]
+            })
+
+    return result
 
 
 # 初始化数据库
