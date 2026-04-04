@@ -64,39 +64,39 @@ function TopicRecommendNode({ id }: TopicRecommendNodeProps) {
 
   const hasInput = inputKeywords.length > 0;
 
-  // 计算AI相关性得分
-  const scoreKeyword = (keyword: string): { score: number; matchType: string } => {
-    const kw = keyword.toLowerCase();
+  // v0.18-R2: 重写评分算法，区分度高
+  const scoreKeyword = (kw: Keyword): { score: number; matchType: string } => {
+    const word = kw.word.toLowerCase();
     let score = 0;
     let matchType = '科普向';
 
-    // 检查是否匹配AI关键词
+    // 1. 多源出现加分（同一关键词在多个来源出现，热度更真实）
+    const sourceCount = kw.sourceNews?.length || 1;
+    score += Math.min(sourceCount * 15, 45); // 1源15分，2源30分，3+源45分封顶
+
+    // 2. AI 赛道相关（降低单次权重，防止一个词就满分）
+    let aiMatchCount = 0;
     for (const aiKw of AI_KEYWORDS) {
-      if (kw.includes(aiKw.toLowerCase())) {
-        score += 30;
-      }
+      if (word.includes(aiKw.toLowerCase())) aiMatchCount++;
+    }
+    score += Math.min(aiMatchCount * 8, 24); // 每匹配一次+8，最多24分
+
+    // 3. 短语质量：2-4字短语质量最高，单字/超长词降分
+    if (kw.type === 'phrase' || word.length >= 3) {
+      score += 10;
+    } else {
+      score += 2; // 单字碎片
     }
 
-    // 检查话题类型
+    // 4. 话题类型标记
     for (const [type, markers] of Object.entries(TOPIC_TYPES)) {
       for (const marker of markers) {
-        if (kw.includes(marker)) {
+        if (word.includes(marker)) {
           matchType = type;
-          score += 10;
+          score += 8;
           break;
         }
       }
-    }
-
-    // 短语比单词相关性更高
-    if (keyword.length >= 4) {
-      score += 10;
-    }
-
-    // 热度权重加成
-    const keywordData = inputKeywords.find(k => k.word === keyword);
-    if (keywordData) {
-      score += keywordData.weight * 20;
     }
 
     return { score: Math.min(100, score), matchType };
@@ -107,7 +107,7 @@ function TopicRecommendNode({ id }: TopicRecommendNodeProps) {
     if (!hasInput) return [];
 
     const scored = inputKeywords.map(kw => {
-      const { score, matchType } = scoreKeyword(kw.word);
+      const { score, matchType } = scoreKeyword(kw);
       return {
         ...kw,
         aiScore: score,
