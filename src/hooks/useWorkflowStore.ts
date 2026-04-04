@@ -420,7 +420,20 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         break;
       }
       case 'contentGenerate': {
-        const selectedKws = nodeData.selectedKeywords as Keyword[] || [];
+        let selectedKws = nodeData.selectedKeywords as Keyword[] || [];
+        // 如果自身没有，从上游边读取（runAll 场景）
+        if (selectedKws.length === 0) {
+          for (const edge of incomingEdges) {
+            const sourceNode = get().nodes.find(n => n.id === edge.source);
+            if (sourceNode) {
+              const srcData = sourceNode.data as NodeData;
+              if (srcData.selectedKeywords?.length) {
+                selectedKws = srcData.selectedKeywords as Keyword[];
+                break;
+              }
+            }
+          }
+        }
         if (selectedKws.length === 0) {
           update({ generateStatus: 'error', error: '请先选择热词' });
           return;

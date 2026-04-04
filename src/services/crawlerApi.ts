@@ -44,6 +44,9 @@ export async function runCrawler(platforms: string[], limit: number = 30): Promi
   }
 
   const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || '抓取失败');
+  }
   return {
     news: data.news as NewsItem[],
     platformResults: data.platformResults as PlatformResult[],
@@ -58,6 +61,9 @@ export async function parseHotNewsFile(): Promise<NewsItem[]> {
   }
 
   const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || '加载失败');
+  }
   return data.news as NewsItem[];
 }
 
@@ -82,6 +88,9 @@ export async function extractKeywords(
   }
 
   const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || '提取失败');
+  }
   // 转换 snake_case -> camelCase
   return (data.keywords as Array<Record<string, unknown>>).map(k => ({
     word: k.word as string,
@@ -169,6 +178,9 @@ export async function getKeywordTrends(keywords: string[], days: number = 7): Pr
   const response = await fetchWithTimeout(`${API_BASE}/keywords/trend?keywords=${keywords.join(',')}&days=${days}`);
   if (!response.ok) throw new Error(`API error: ${response.status}`);
   const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || '获取趋势失败');
+  }
   return data.trends as Record<string, TrendDataPoint[]>;
 }
 
@@ -226,6 +238,7 @@ export async function getContentRecords(limit: number = 50): Promise<ContentReco
   const response = await fetchWithTimeout(`${API_BASE}/content-records?limit=${limit}`);
   if (!response.ok) throw new Error(`API error: ${response.status}`);
   const result = await response.json();
+  if (!result.success) throw new Error(result.error || '获取失败');
   return result.records as ContentRecord[];
 }
 

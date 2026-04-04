@@ -366,7 +366,7 @@ def preprocess_for_yake(text: str) -> str:
         if not w:
             continue
         # 中英文标点 → 句子边界（YAKE 用句号分割短语范围）
-        if re.match(r'^[，。？！、；：""''【】《》（）\[\]{}]+…—\-·,.?!;:%]+\$', w):
+        if re.match(r'^[，。？！、；：""''【】《》（）\[\]{}+…—\-·,.?!;:%]+$', w):
             segments.append('.')
         else:
             segments.append(w)
@@ -380,7 +380,7 @@ def is_valid_keyphrase(word: str) -> bool:
     过滤规则：过滤低质量短语
     """
     # 1. 过滤纯数字/版本号
-    if re.match(r'^[\d.%]+\$', word):
+    if re.match(r'^[\d.%]+$', word):
         return False
     # 2. 过滤过长的短语（>15字大概率是垃圾）
     if len(word) > 15:

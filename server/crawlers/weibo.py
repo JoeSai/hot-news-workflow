@@ -3,6 +3,7 @@
 """
 微博热搜爬虫
 """
+import time
 from datetime import datetime
 from typing import List, Dict, Optional
 from urllib.parse import quote
@@ -35,7 +36,8 @@ class WeiboSpider:
         if result:
             return result
 
-        # 方式2：尝试网页抓取
+        # 方式2：尝试网页抓取（添加退避延迟，降低被封风险）
+        time.sleep(2)
         result = self._get_via_web_scrape(limit)
         if result:
             return result

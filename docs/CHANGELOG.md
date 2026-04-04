@@ -2,6 +2,19 @@
 
 ---
 
+## v0.14
+
+**Bug Fixes (B5-B7):**
+- **B5: YAKE 预处理正则修复** - `preprocess_for_yake` 的标点正则字符类闭合错误 + `\$` 改为 `$`，中文标点正确替换为句子边界
+- **B6: runAll 内容生成读不到热词** - `runNode` 的 `contentGenerate` 分支改为从上游边读取 `selectedKeywords`
+- **B7: is_valid_keyphrase 正则修复** - `\$` 改为 `$`，纯数字和百分比正确过滤
+
+**质量打磨:**
+- **前端 API success 检查** - `runCrawler`、`parseHotNewsFile`、`extractKeywords`、`getKeywordTrends`、`getContentRecords` 添加 `data.success` 检查
+- **微博 fallback 退避延迟** - 主方法失败后延迟 2 秒再调用 fallback，降低被封风险
+
+---
+
 ## v0.13
 
 **技术债务修复 & 平台恢复**
