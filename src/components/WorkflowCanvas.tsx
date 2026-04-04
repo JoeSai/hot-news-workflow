@@ -9,7 +9,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { useWorkflowStore } from '../hooks/useWorkflowStore';
+import { useWorkflowStore, WORKFLOW_TEMPLATES } from '../hooks/useWorkflowStore';
 import HotspotCaptureNode from './nodes/HotspotCaptureNode';
 import KeywordExtractNode from './nodes/KeywordExtractNode';
 import WordCloudNode from './nodes/WordCloudNode';
@@ -29,8 +29,9 @@ const nodeTypes = {
 };
 
 function WorkflowCanvas() {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, clearWorkflow } =
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, clearWorkflow, loadTemplate } =
     useWorkflowStore();
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // 计算下一个可用的节点ID，基于已有节点的最大ID
   const getNextNodeId = (prefix: string) => {
@@ -251,15 +252,43 @@ function WorkflowCanvas() {
           )}
         </Panel>
 
-        {/* Top Right - Instructions */}
-        <Panel position="top-right" className="bg-white rounded-lg shadow-lg p-3 text-sm">
-          <div className="font-medium text-gray-700 mb-1">📖 使用说明</div>
-          <ul className="text-xs text-gray-500 space-y-1">
-            <li>1. 添加「热点抓取」抓取新闻</li>
-            <li>2. 连接节点拖拽数据</li>
-            <li>3. 添加「关键词提取」生成热词</li>
-            <li>4. 连接热词到「词云」可视化</li>
-          </ul>
+        {/* Top Right - Template Selector */}
+        <Panel position="top-right" className="bg-white rounded-lg shadow-lg p-3 text-sm w-56">
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-medium text-gray-700">📋 工作流模板</div>
+            <button
+              type="button"
+              onClick={() => setShowTemplates(!showTemplates)}
+              className="text-xs text-indigo-600 hover:text-indigo-800"
+            >
+              {showTemplates ? '收起' : '展开'}
+            </button>
+          </div>
+          {showTemplates ? (
+            <div className="space-y-2">
+              {WORKFLOW_TEMPLATES.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    if (nodes.length > 0 && !confirm('加载模板将清除当前工作流，确定继续？')) {
+                      return;
+                    }
+                    loadTemplate(t.id);
+                    setShowTemplates(false);
+                  }}
+                  className="w-full text-left px-3 py-2 bg-gray-50 hover:bg-indigo-50 rounded-md transition-colors group"
+                >
+                  <div className="text-sm font-medium text-gray-800 group-hover:text-indigo-700">{t.name}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">{t.desc}</div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-gray-500">
+              {nodes.length === 0 ? '点击"展开"选择模板快速开始' : `当前 ${nodes.length} 个节点，${edges.length} 条连线`}
+            </div>
+          )}
         </Panel>
       </ReactFlow>
     </div>

@@ -167,7 +167,98 @@ interface WorkflowState {
   onEdgesChange: (changes: any) => void;
   onConnect: (connection: any) => void;
   clearWorkflow: () => void;
+  loadTemplate: (templateId: string) => void;
 }
+
+// 预设工作流模板
+export const WORKFLOW_TEMPLATES = [
+  {
+    id: 'quick-start',
+    name: '🚀 快速上手',
+    desc: '热点抓取 → 关键词提取 → 热词列表 → AI内容生成',
+    nodes: [
+      { id: 'hotspot-1', type: 'hotspotCapture', position: { x: 50, y: 200 }, data: { platforms: ['wangyi', 'ithome', 'toutiao', 'zhihu'], limit: 20, status: 'idle', outputType: 'news' } },
+      { id: 'keyword-1', type: 'keywordExtract', position: { x: 400, y: 200 }, data: { topK: 50, method: 'phrase', keywordStatus: 'idle', outputType: 'keywords' } },
+      { id: 'topic-1', type: 'topicRecommend', position: { x: 750, y: 120 }, data: {} },
+      { id: 'hotword-1', type: 'hotwordList', position: { x: 750, y: 380 }, data: { selectedKeywords: [], outputType: 'keywords' } },
+      { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 250 }, data: { style: '科普向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
+    ],
+    edges: [
+      { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
+      { id: 'e2-3', source: 'keyword-1', target: 'topic-1' },
+      { id: 'e2-4', source: 'keyword-1', target: 'hotword-1' },
+      { id: 'e4-5', source: 'hotword-1', target: 'content-1' },
+    ],
+  },
+  {
+    id: 'ai-daily',
+    name: '📰 AI 热点日报',
+    desc: '多平台抓取 → 关键词提取 → 选题推荐 → 生成 3 篇短草稿',
+    nodes: [
+      { id: 'hotspot-1', type: 'hotspotCapture', position: { x: 50, y: 200 }, data: { platforms: ['ithome', 'toutiao', 'zhihu', 'hackernews'], limit: 30, status: 'idle', outputType: 'news' } },
+      { id: 'keyword-1', type: 'keywordExtract', position: { x: 400, y: 200 }, data: { topK: 80, method: 'phrase', keywordStatus: 'idle', outputType: 'keywords' } },
+      { id: 'topic-1', type: 'topicRecommend', position: { x: 750, y: 120 }, data: {} },
+      { id: 'hotword-1', type: 'hotwordList', position: { x: 750, y: 380 }, data: { selectedKeywords: [], outputType: 'keywords' } },
+      { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 250 }, data: { style: '科普向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
+    ],
+    edges: [
+      { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
+      { id: 'e2-3', source: 'keyword-1', target: 'topic-1' },
+      { id: 'e2-4', source: 'keyword-1', target: 'hotword-1' },
+      { id: 'e4-5', source: 'hotword-1', target: 'content-1' },
+    ],
+  },
+  {
+    id: 'tech-deep',
+    name: '🔬 技术深度分析',
+    desc: 'HackerNews + 机器之心 → 深度关键词提取 → 观点向草稿',
+    nodes: [
+      { id: 'hotspot-1', type: 'hotspotCapture', position: { x: 50, y: 200 }, data: { platforms: ['hackernews', 'ithome'], limit: 20, status: 'idle', outputType: 'news' } },
+      { id: 'keyword-1', type: 'keywordExtract', position: { x: 400, y: 200 }, data: { topK: 30, method: 'textrank', keywordStatus: 'idle', outputType: 'keywords' } },
+      { id: 'topic-1', type: 'topicRecommend', position: { x: 750, y: 120 }, data: {} },
+      { id: 'hotword-1', type: 'hotwordList', position: { x: 750, y: 380 }, data: { selectedKeywords: [], outputType: 'keywords' } },
+      { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 250 }, data: { style: '观点向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
+    ],
+    edges: [
+      { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
+      { id: 'e2-3', source: 'keyword-1', target: 'topic-1' },
+      { id: 'e2-4', source: 'keyword-1', target: 'hotword-1' },
+      { id: 'e4-5', source: 'hotword-1', target: 'content-1' },
+    ],
+  },
+  {
+    id: 'tutorial',
+    name: '📚 教程向',
+    desc: '热点抓取 → 关键词提取 → 教程向生成',
+    nodes: [
+      { id: 'hotspot-1', type: 'hotspotCapture', position: { x: 50, y: 200 }, data: { platforms: ['wangyi', 'ithome', 'toutiao'], limit: 20, status: 'idle', outputType: 'news' } },
+      { id: 'keyword-1', type: 'keywordExtract', position: { x: 400, y: 200 }, data: { topK: 50, method: 'phrase', keywordStatus: 'idle', outputType: 'keywords' } },
+      { id: 'hotword-1', type: 'hotwordList', position: { x: 750, y: 380 }, data: { selectedKeywords: [], outputType: 'keywords' } },
+      { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 380 }, data: { style: '教程向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
+    ],
+    edges: [
+      { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
+      { id: 'e2-3', source: 'keyword-1', target: 'hotword-1' },
+      { id: 'e3-4', source: 'hotword-1', target: 'content-1' },
+    ],
+  },
+  {
+    id: 'review',
+    name: '⚖️ 测评向',
+    desc: '产品热点抓取 → 关键词提取 → 测评向草稿',
+    nodes: [
+      { id: 'hotspot-1', type: 'hotspotCapture', position: { x: 50, y: 200 }, data: { platforms: ['ithome', 'toutiao', 'zhihu'], limit: 20, status: 'idle', outputType: 'news' } },
+      { id: 'keyword-1', type: 'keywordExtract', position: { x: 400, y: 200 }, data: { topK: 40, method: 'phrase', keywordStatus: 'idle', outputType: 'keywords' } },
+      { id: 'hotword-1', type: 'hotwordList', position: { x: 750, y: 380 }, data: { selectedKeywords: [], outputType: 'keywords' } },
+      { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 380 }, data: { style: '测评向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
+    ],
+    edges: [
+      { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
+      { id: 'e2-3', source: 'keyword-1', target: 'hotword-1' },
+      { id: 'e3-4', source: 'hotword-1', target: 'content-1' },
+    ],
+  },
+];
 
 const savedWorkflow = loadWorkflow();
 
@@ -226,5 +317,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   clearWorkflow: () => {
     localStorage.removeItem(STORAGE_KEY);
     set({ nodes: [], edges: [] });
+  },
+
+  loadTemplate: (templateId: string) => {
+    const template = WORKFLOW_TEMPLATES.find(t => t.id === templateId);
+    if (template) {
+      saveWorkflow(template.nodes, template.edges);
+      set({ nodes: template.nodes, edges: template.edges });
+    }
   },
 }));
