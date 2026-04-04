@@ -19,6 +19,7 @@ import ContentGenerateNode from './nodes/ContentGenerateNode';
 import TopicRecommendNode from './nodes/TopicRecommendNode';
 import TrendNode from './nodes/TrendNode';
 import ContentRecordNode from './nodes/ContentRecordNode';
+import CoverImageNode from './nodes/CoverImageNode';
 
 const nodeTypes = {
   hotspotCapture: HotspotCaptureNode,
@@ -30,6 +31,7 @@ const nodeTypes = {
   topicRecommend: TopicRecommendNode,
   trend: TrendNode,
   contentRecord: ContentRecordNode,
+  coverImage: CoverImageNode,
 };
 
 function WorkflowCanvas() {
