@@ -16,6 +16,7 @@ import WordCloudNode from './nodes/WordCloudNode';
 import NewsDetailNode from './nodes/NewsDetailNode';
 import HotwordListNode from './nodes/HotwordListNode';
 import ContentGenerateNode from './nodes/ContentGenerateNode';
+import TopicRecommendNode from './nodes/TopicRecommendNode';
 
 const nodeTypes = {
   hotspotCapture: HotspotCaptureNode,
@@ -24,6 +25,7 @@ const nodeTypes = {
   newsDetail: NewsDetailNode,
   hotwordList: HotwordListNode,
   contentGenerate: ContentGenerateNode,
+  topicRecommend: TopicRecommendNode,
 };
 
 function WorkflowCanvas() {
@@ -115,6 +117,16 @@ function WorkflowCanvas() {
     addNode(newNode);
   }, [addNode]);
 
+  const addTopicRecommendNode = useCallback(() => {
+    const newNode = {
+      id: getNextNodeId('topic'),
+      type: 'topicRecommend',
+      position: { x: 750, y: 300 },
+      data: {},
+    };
+    addNode(newNode);
+  }, [addNode]);
+
   return (
     <div className="w-full h-full">
       <ReactFlow
@@ -143,6 +155,8 @@ function WorkflowCanvas() {
                 return '#8b5cf6';
               case 'contentGenerate':
                 return '#6366f1';
+              case 'topicRecommend':
+                return '#ec4899';
               default:
                 return '#888';
             }
@@ -180,6 +194,14 @@ function WorkflowCanvas() {
             >
               <span>📝</span>
               <span>热词列表</span>
+            </button>
+            <button
+              type="button"
+              onClick={addTopicRecommendNode}
+              className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-pink-50 hover:bg-pink-100 rounded-md transition-colors"
+            >
+              <span>🎯</span>
+              <span>选题推荐</span>
             </button>
             <button
               type="button"
