@@ -450,7 +450,7 @@ API_CONFIGS = {
     },
     "minimax": {
         "base_url": "https://api.minimax.chat/v1",
-        "model": "MiniMax-M2",
+        "model": "MiniMax-M2.7",
         "default_key_env": "MINIMAX_API_KEY",
     },
     "qwen": {

@@ -162,11 +162,8 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
               className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
               onClick={(e) => e.stopPropagation()}
             >
-              <option value="deepseek">DeepSeek</option>
-              <option value="openai">OpenAI</option>
               <option value="minimax">MiniMax</option>
-              <option value="qwen">通义千问</option>
-              <option value="zhipu">智谱</option>
+              <option value="deepseek">DeepSeek</option>
             </select>
           </div>
 
