@@ -2,7 +2,7 @@ import { memo, useState, useMemo, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useWorkflowStore, getInputData } from '../../hooks/useWorkflowStore';
 import { useDraftHistory } from '../../hooks/useDraftHistory';
-import type { NodeData, Keyword, NewsItem } from '../../types/workflow';
+import type { NodeData, Keyword, NewsItem, DraftVersion } from '../../types/workflow';
 import { generateContent } from '../../services/crawlerApi';
 
 interface ContentGenerateNodeProps {
@@ -28,6 +28,9 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const [showXhsPreview, setShowXhsPreview] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedForCompare, setSelectedForCompare] = useState<Set<string>>(new Set());
+  const [showCompareView, setShowCompareView] = useState(false);
 
   useEffect(() => {
     if (data.generateStatus === 'error') {
@@ -76,12 +79,23 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
         apiKey,
       });
 
+      const newVersion: DraftVersion = {
+        id: `v-${Date.now()}`,
+        createdAt: new Date().toLocaleString('zh-CN'),
+        titles: result.titles,
+        body: result.body,
+        tags: result.tags,
+        style,
+        keywords: selectedKeywords.map(k => k.word),
+      };
+      const existingVersions = (data.draftVersions as DraftVersion[] || []);
       updateNodeData(id, {
         generateStatus: 'success',
         draft: result.draft,
         draftTitles: result.titles,
         draftBody: result.body,
-        draftTags: result.tags
+        draftTags: result.tags,
+        draftVersions: [newVersion, ...existingVersions].slice(0, 10),
       });
 
       addDraft({
@@ -166,59 +180,213 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
       );
     }
 
-    return (
-      <div className="space-y-3">
-        <div className="text-xs text-gray-500">共 {drafts.length} 条草稿</div>
-        <div className="border border-gray-200 rounded-lg max-h-96 overflow-y-auto">
-          {drafts.map((d) => (
-            <div key={d.id} className="border-b border-gray-100 last:border-b-0">
-              <div
-                className="px-3 py-2 cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={() => setSelectedDraftId(selectedDraftId === d.id ? null : d.id)}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-800 truncate">
-                      {d.titles[0] || '无标题'}
-                    </div>
-                    <div className="text-xs text-gray-400 mt-0.5">
-                      {d.createdAt} · {d.style}
-                    </div>
+    const nodeVersions = (data.draftVersions as DraftVersion[] || []);
+
+    const toggleCompareSelect = (id: string) => {
+      setSelectedForCompare(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else if (next.size < 4) next.add(id);
+        return next;
+      });
+    };
+
+    const handleCompare = () => {
+      setShowCompareView(true);
+    };
+
+    const renderDraftCard = (d: typeof drafts[0], isNodeVersion = false, versionId?: string) => {
+      const cardId = isNodeVersion ? versionId : d.id;
+      const isChecked = selectedForCompare.has(cardId || '');
+      return (
+        <div key={cardId} className="border-b border-gray-100 last:border-b-0">
+          <div className="px-3 py-2 cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={() => !compareMode && setSelectedDraftId(selectedDraftId === cardId ? null : (cardId ?? null))}>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                {compareMode && (
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => cardId && toggleCompareSelect(cardId)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="accent-indigo-500 w-3.5 h-3.5"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-800 truncate">
+                    {d.titles[0] || '无标题'}
                   </div>
-                  <div className="flex items-center gap-1 ml-2">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); exportDraft(d, 'markdown'); }}
-                      className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100"
-                    >
-                      MD
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); exportDraft(d, 'json'); }}
-                      className="text-xs px-2 py-0.5 bg-green-50 text-green-600 rounded hover:bg-green-100"
-                    >
-                      JSON
-                    </button>
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    {d.createdAt} · {d.style}
+                    {isNodeVersion && <span className="ml-1 text-indigo-400">（节点版本）</span>}
+                  </div>
+                </div>
+              </div>
+              {!compareMode && (
+                <div className="flex items-center gap-1 ml-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); exportDraft(d, 'markdown'); }}
+                    className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100"
+                  >
+                    MD
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); exportDraft(d, 'json'); }}
+                    className="text-xs px-2 py-0.5 bg-green-50 text-green-600 rounded hover:bg-green-100"
+                  >
+                    JSON
+                  </button>
+                  {!isNodeVersion && (
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteDraft(d.id); }}
                       className="text-xs px-2 py-0.5 bg-red-50 text-red-500 rounded hover:bg-red-100"
                     >
                       ✕
                     </button>
-                  </div>
+                  )}
                 </div>
-                {selectedDraftId === d.id && (
-                  <div className="mt-2 text-xs text-gray-600 bg-gray-50 rounded p-2 space-y-1">
-                    <div className="font-medium text-indigo-600">标题备选：</div>
-                    {d.titles.map((t, i) => <div key={i} className="ml-2">· {t}</div>)}
-                    <div className="font-medium text-indigo-600 mt-2">正文：</div>
-                    <div className="ml-2 whitespace-pre-wrap">{d.body.slice(0, 200)}{d.body.length > 200 ? '...' : ''}</div>
-                    <div className="font-medium text-indigo-600 mt-2">标签：</div>
-                    <div className="ml-2">{d.tags.map(t => `#${t}`).join(' ')}</div>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
-          ))}
+            {selectedDraftId === cardId && !compareMode && (
+              <div className="mt-2 text-xs text-gray-600 bg-gray-50 rounded p-2 space-y-1">
+                <div className="font-medium text-indigo-600">标题备选：</div>
+                {d.titles.map((t, i) => <div key={i} className="ml-2">· {t}</div>)}
+                <div className="font-medium text-indigo-600 mt-2">正文：</div>
+                <div className="ml-2 whitespace-pre-wrap">{d.body.slice(0, 200)}{d.body.length > 200 ? '...' : ''}</div>
+                <div className="font-medium text-indigo-600 mt-2">标签：</div>
+                <div className="ml-2">{d.tags.map(t => `#${t}`).join(' ')}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-xs text-gray-500">共 {drafts.length} 条草稿（{nodeVersions.length} 个节点版本）</div>
+          <button
+            type="button"
+            onClick={() => { setCompareMode(!compareMode); setSelectedForCompare(new Set()); }}
+            className={`text-xs px-2 py-0.5 rounded ${compareMode ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+          >
+            {compareMode ? '取消对比' : '🔍 多版对比'}
+          </button>
+        </div>
+        {compareMode && (
+          <div className="text-xs text-gray-500 bg-indigo-50 rounded px-2 py-1.5">
+            选择 2-4 个版本横向对比（已选 {selectedForCompare.size} 个）
+          </div>
+        )}
+        {compareMode && selectedForCompare.size >= 2 && (
+          <button
+            type="button"
+            onClick={handleCompare}
+            className="w-full py-2 px-4 rounded-md font-medium text-white bg-indigo-600 hover:bg-indigo-700 text-sm"
+          >
+            📊 横向对比 {selectedForCompare.size} 个版本
+          </button>
+        )}
+        <div className="border border-gray-200 rounded-lg max-h-80 overflow-y-auto">
+          {nodeVersions.map((v) => renderDraftCard({
+            id: v.id,
+            createdAt: v.createdAt,
+            titles: v.titles,
+            body: v.body,
+            tags: v.tags,
+            style: v.style,
+            keywords: v.keywords,
+          } as typeof drafts[0], true, v.id))}
+          {drafts.map((d) => renderDraftCard(d))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderCompareView = () => {
+    const nodeVersions = (data.draftVersions as DraftVersion[] || []);
+    const allDrafts: { id: string; titles: string[]; body: string; tags: string[]; style: string; createdAt: string; keywords: string[] }[] = [
+      ...nodeVersions.map(v => ({ ...v })),
+      ...drafts.map(d => ({ id: d.id, titles: d.titles, body: d.body, tags: d.tags, style: d.style, createdAt: d.createdAt, keywords: d.keywords })),
+    ];
+    const selectedDrafts = allDrafts.filter(d => selectedForCompare.has(d.id));
+
+    if (selectedDrafts.length < 2) {
+      return (
+        <div className="text-center py-8 text-gray-400">
+          <div className="text-sm">请至少选择 2 个版本</div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-medium text-gray-700">📊 {selectedDrafts.length} 个版本横向对比</div>
+          <button
+            type="button"
+            onClick={() => { setShowCompareView(false); setCompareMode(false); setSelectedForCompare(new Set()); }}
+            className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+          >
+            返回
+          </button>
+        </div>
+
+        {/* 标题对比 */}
+        <div>
+          <div className="text-xs font-medium text-gray-500 mb-1.5">标题备选</div>
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${selectedDrafts.length}, 1fr)` }}>
+            {selectedDrafts.map((d) => (
+              <div key={d.id} className="bg-gray-50 rounded p-2 text-xs">
+                <div className="text-gray-400 mb-1">{d.style} · {d.createdAt}</div>
+                {d.titles.slice(0, 3).map((t, j) => (
+                  <div key={j} className="text-gray-700 leading-snug">{j + 1}. {t}</div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 正文对比 */}
+        <div>
+          <div className="text-xs font-medium text-gray-500 mb-1.5">正文</div>
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${selectedDrafts.length}, 1fr)` }}>
+            {selectedDrafts.map((d) => (
+              <div key={d.id} className="bg-gray-50 rounded p-2 text-xs text-gray-700 whitespace-pre-wrap max-h-48 overflow-y-auto leading-relaxed">
+                {d.body || '(无正文)'}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 标签对比 */}
+        <div>
+          <div className="text-xs font-medium text-gray-500 mb-1.5">标签</div>
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${selectedDrafts.length}, 1fr)` }}>
+            {selectedDrafts.map((d) => (
+              <div key={d.id} className="bg-gray-50 rounded p-2">
+                <div className="flex flex-wrap gap-1">
+                  {d.tags.map((t, i) => (
+                    <span key={i} className="px-1.5 py-0.5 bg-pink-100 text-pink-600 rounded text-xs">#{t}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 热词 */}
+        <div>
+          <div className="text-xs font-medium text-gray-500 mb-1.5">热词</div>
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${selectedDrafts.length}, 1fr)` }}>
+            {selectedDrafts.map((d) => (
+              <div key={d.id} className="bg-gray-50 rounded p-2 text-xs text-gray-600">
+                {d.keywords?.join(', ') || '(无热词)'}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -475,7 +643,7 @@ function ContentGenerateNode({ id, data }: ContentGenerateNodeProps) {
       </div>
 
       <div className="p-4">
-        {showHistory ? renderHistoryView() : renderEditorView()}
+        {showCompareView ? renderCompareView() : showHistory ? renderHistoryView() : renderEditorView()}
       </div>
     </div>
   );

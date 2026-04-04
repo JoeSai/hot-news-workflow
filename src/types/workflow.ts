@@ -58,6 +58,17 @@ export interface WordCloudItem {
   value: number;
 }
 
+// 草稿版本条目（用于多版本对比）
+export interface DraftVersion {
+  id: string;
+  createdAt: string;
+  titles: string[];
+  body: string;
+  tags: string[];
+  style: string;
+  keywords: string[];
+}
+
 // 节点数据类型
 export type NodeDataType = 'news' | 'keywords' | 'wordcloud' | 'selectedKeywords';
 
@@ -97,10 +108,15 @@ export interface NodeData extends Record<string, unknown> {
 
   // 内容生成节点
   draft?: string;
+  draftTitles?: string[];
+  draftBody?: string;
+  draftTags?: string[];
   generateStatus?: 'idle' | 'running' | 'success' | 'error';
   style?: string;
   apiType?: string;
   apiKey?: string;
+  /** 历史版本列表（用于草稿对比） */
+  draftVersions?: DraftVersion[];
 
   // 趋势节点
   trendStatus?: 'idle' | 'loading' | 'success' | 'error';
