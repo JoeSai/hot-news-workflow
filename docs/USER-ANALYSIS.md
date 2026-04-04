@@ -1,8 +1,10 @@
-# 用户分析与产品建议
+# ⚠️ 已废弃
 
-> 目标用户：AI 赛道小红书自媒体人
-> 分析日期：2026-04-04
-> 状态：供开发团队参考，指导下一阶段迭代方向
+本文档已废弃。内容已拆分至：
+
+- **用户画像 + 需求** → [PRODUCT-REQUIREMENTS.md](./PRODUCT-REQUIREMENTS.md)
+- **Bug + 架构评审** → [TECH-REVIEW.md](./TECH-REVIEW.md)
+- **版本记录** → [CHANGELOG.md](./CHANGELOG.md)
 
 ---
 
