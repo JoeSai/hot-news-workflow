@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeData } from '../../types/workflow';
 import { useDraftHistory } from '../../hooks/useDraftHistory';
@@ -111,6 +111,30 @@ function ContentRecordNode(_props: ContentRecordNodeProps) {
       console.error('删除失败', e);
     }
   };
+
+  // v0.20-R3: 选题类型 × 互动数据交叉分析
+  const CROSS_ANALYSIS = useMemo(() => {
+    const styleMap: Record<string, { total: { likes: number; collects: number; comments: number; shares: number }; count: number }> = {};
+    for (const r of records) {
+      const s = r.style || '未知';
+      if (!styleMap[s]) styleMap[s] = { total: { likes: 0, collects: 0, comments: 0, shares: 0 }, count: 0 };
+      styleMap[s].total.likes += r.likes;
+      styleMap[s].total.collects += r.collects;
+      styleMap[s].total.comments += r.comments;
+      styleMap[s].total.shares += r.shares;
+      styleMap[s].count++;
+    }
+    return Object.entries(styleMap)
+      .map(([style, data]) => ({
+        style,
+        count: data.count,
+        avg_likes: Math.round(data.total.likes / data.count),
+        avg_collects: Math.round(data.total.collects / data.count),
+        avg_comments: Math.round(data.total.comments / data.count),
+        avg_shares: Math.round(data.total.shares / data.count),
+      }))
+      .sort((a, b) => (b.avg_likes + b.avg_collects + b.avg_comments) - (a.avg_likes + a.avg_collects + a.avg_comments));
+  }, [records]);
 
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-200 w-96">
@@ -259,6 +283,35 @@ function ContentRecordNode(_props: ContentRecordNodeProps) {
               {loading ? '保存中...' : '💾 保存记录'}
             </button>
           </form>
+        )}
+
+        {/* v0.20-R3: 选题类型 × 互动数据交叉分析 */}
+        {records.length > 0 && (
+          <div className="border-t border-gray-200 pt-3">
+            <div className="text-xs font-medium text-gray-500 mb-2">📊 选题类型效果分析</div>
+            <div className="space-y-1">
+              {CROSS_ANALYSIS.map(row => (
+                <div key={row.style} className="bg-gray-50 rounded p-2 text-xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-gray-700">{row.style}</span>
+                    <span className="text-gray-400">{row.count}篇</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1 text-center">
+                    {[
+                      { label: '👍', value: row.avg_likes, color: 'text-pink-600' },
+                      { label: '⭐', value: row.avg_collects, color: 'text-blue-600' },
+                      { label: '💬', value: row.avg_comments, color: 'text-orange-600' },
+                      { label: '↗️', value: row.avg_shares, color: 'text-gray-600' },
+                    ].map(m => (
+                      <div key={m.label}>
+                        <span className={`font-bold ${m.color}`}>{m.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* 历史记录列表 */}
