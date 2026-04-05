@@ -33,18 +33,9 @@ const DEFAULT_WORKFLOW = {
     },
     {
       id: 'topic-1',
-      type: 'topicRecommend',
-      position: { x: 750, y: 120 },
+      type: 'topicHotword',
+      position: { x: 750, y: 250 },
       data: {}
-    },
-    {
-      id: 'hotword-1',
-      type: 'hotwordList',
-      position: { x: 750, y: 380 },
-      data: {
-        selectedKeywords: [],
-        outputType: 'keywords'
-      }
     },
     {
       id: 'content-1',
@@ -61,8 +52,7 @@ const DEFAULT_WORKFLOW = {
   edges: [
     { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
     { id: 'e2-3', source: 'keyword-1', target: 'topic-1' },
-    { id: 'e2-4', source: 'keyword-1', target: 'hotword-1' },
-    { id: 'e4-5', source: 'hotword-1', target: 'content-1' }
+    { id: 'e3-4', source: 'topic-1', target: 'content-1' }
   ]
 };
 
@@ -179,15 +169,13 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'hotspot-1', type: 'hotspotCapture', position: { x: 50, y: 200 }, data: { platforms: ['wangyi', 'ithome', 'toutiao', 'zhihu'], limit: 20, status: 'idle', outputType: 'news' } },
       { id: 'keyword-1', type: 'keywordExtract', position: { x: 400, y: 200 }, data: { topK: 50, method: 'phrase', keywordStatus: 'idle', outputType: 'keywords' } },
-      { id: 'topic-1', type: 'topicRecommend', position: { x: 750, y: 120 }, data: {} },
-      { id: 'hotword-1', type: 'hotwordList', position: { x: 750, y: 380 }, data: { selectedKeywords: [], outputType: 'keywords' } },
+      { id: 'topic-1', type: 'topicHotword', position: { x: 750, y: 250 }, data: {} },
       { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 250 }, data: { style: '科普向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
     ],
     edges: [
       { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
       { id: 'e2-3', source: 'keyword-1', target: 'topic-1' },
-      { id: 'e2-4', source: 'keyword-1', target: 'hotword-1' },
-      { id: 'e4-5', source: 'hotword-1', target: 'content-1' },
+      { id: 'e3-4', source: 'topic-1', target: 'content-1' },
     ],
   },
   {
@@ -197,15 +185,13 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'hotspot-1', type: 'hotspotCapture', position: { x: 50, y: 200 }, data: { platforms: ['ithome', 'toutiao', 'zhihu', 'hackernews'], limit: 30, status: 'idle', outputType: 'news' } },
       { id: 'keyword-1', type: 'keywordExtract', position: { x: 400, y: 200 }, data: { topK: 80, method: 'phrase', keywordStatus: 'idle', outputType: 'keywords' } },
-      { id: 'topic-1', type: 'topicRecommend', position: { x: 750, y: 120 }, data: {} },
-      { id: 'hotword-1', type: 'hotwordList', position: { x: 750, y: 380 }, data: { selectedKeywords: [], outputType: 'keywords' } },
+      { id: 'topic-1', type: 'topicHotword', position: { x: 750, y: 250 }, data: {} },
       { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 250 }, data: { style: '科普向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
     ],
     edges: [
       { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
       { id: 'e2-3', source: 'keyword-1', target: 'topic-1' },
-      { id: 'e2-4', source: 'keyword-1', target: 'hotword-1' },
-      { id: 'e4-5', source: 'hotword-1', target: 'content-1' },
+      { id: 'e3-4', source: 'topic-1', target: 'content-1' },
     ],
   },
   {
@@ -215,15 +201,13 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'hotspot-1', type: 'hotspotCapture', position: { x: 50, y: 200 }, data: { platforms: ['hackernews', 'ithome'], limit: 20, status: 'idle', outputType: 'news' } },
       { id: 'keyword-1', type: 'keywordExtract', position: { x: 400, y: 200 }, data: { topK: 30, method: 'textrank', keywordStatus: 'idle', outputType: 'keywords' } },
-      { id: 'topic-1', type: 'topicRecommend', position: { x: 750, y: 120 }, data: {} },
-      { id: 'hotword-1', type: 'hotwordList', position: { x: 750, y: 380 }, data: { selectedKeywords: [], outputType: 'keywords' } },
+      { id: 'topic-1', type: 'topicHotword', position: { x: 750, y: 250 }, data: {} },
       { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 250 }, data: { style: '观点向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
     ],
     edges: [
       { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
       { id: 'e2-3', source: 'keyword-1', target: 'topic-1' },
-      { id: 'e2-4', source: 'keyword-1', target: 'hotword-1' },
-      { id: 'e4-5', source: 'hotword-1', target: 'content-1' },
+      { id: 'e3-4', source: 'topic-1', target: 'content-1' },
     ],
   },
   {
@@ -233,13 +217,13 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'hotspot-1', type: 'hotspotCapture', position: { x: 50, y: 200 }, data: { platforms: ['wangyi', 'ithome', 'toutiao'], limit: 20, status: 'idle', outputType: 'news' } },
       { id: 'keyword-1', type: 'keywordExtract', position: { x: 400, y: 200 }, data: { topK: 50, method: 'phrase', keywordStatus: 'idle', outputType: 'keywords' } },
-      { id: 'hotword-1', type: 'hotwordList', position: { x: 750, y: 380 }, data: { selectedKeywords: [], outputType: 'keywords' } },
-      { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 380 }, data: { style: '教程向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
+      { id: 'topic-1', type: 'topicHotword', position: { x: 750, y: 250 }, data: {} },
+      { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 250 }, data: { style: '教程向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
     ],
     edges: [
       { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
-      { id: 'e2-3', source: 'keyword-1', target: 'hotword-1' },
-      { id: 'e3-4', source: 'hotword-1', target: 'content-1' },
+      { id: 'e2-3', source: 'keyword-1', target: 'topic-1' },
+      { id: 'e3-4', source: 'topic-1', target: 'content-1' },
     ],
   },
   {
@@ -249,13 +233,13 @@ export const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'hotspot-1', type: 'hotspotCapture', position: { x: 50, y: 200 }, data: { platforms: ['ithome', 'toutiao', 'zhihu'], limit: 20, status: 'idle', outputType: 'news' } },
       { id: 'keyword-1', type: 'keywordExtract', position: { x: 400, y: 200 }, data: { topK: 40, method: 'phrase', keywordStatus: 'idle', outputType: 'keywords' } },
-      { id: 'hotword-1', type: 'hotwordList', position: { x: 750, y: 380 }, data: { selectedKeywords: [], outputType: 'keywords' } },
-      { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 380 }, data: { style: '测评向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
+      { id: 'topic-1', type: 'topicHotword', position: { x: 750, y: 250 }, data: {} },
+      { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 250 }, data: { style: '测评向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
     ],
     edges: [
       { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
-      { id: 'e2-3', source: 'keyword-1', target: 'hotword-1' },
-      { id: 'e3-4', source: 'hotword-1', target: 'content-1' },
+      { id: 'e2-3', source: 'keyword-1', target: 'topic-1' },
+      { id: 'e3-4', source: 'topic-1', target: 'content-1' },
     ],
   },
   {
@@ -282,9 +266,8 @@ export const WORKFLOW_TEMPLATES = [
       { id: 'keyword-1', type: 'keywordExtract', position: { x: 400, y: 200 }, data: { topK: 50, method: 'phrase', keywordStatus: 'idle', outputType: 'keywords' } },
       { id: 'wordcloud-1', type: 'wordCloud', position: { x: 750, y: 50 }, data: { wordCloudTopK: 50, wordCloudStatus: 'idle' } },
       { id: 'trend-1', type: 'trend', position: { x: 750, y: 250 }, data: {} },
-      { id: 'hotword-1', type: 'hotwordList', position: { x: 750, y: 450 }, data: { selectedKeywords: [], outputType: 'keywords' } },
+      { id: 'topic-1', type: 'topicHotword', position: { x: 750, y: 450 }, data: {} },
       { id: 'newsdetail-1', type: 'newsDetail', position: { x: 750, y: 650 }, data: { newsDetailStatus: 'idle' } },
-      { id: 'topic-1', type: 'topicRecommend', position: { x: 1100, y: 120 }, data: {} },
       { id: 'content-1', type: 'contentGenerate', position: { x: 1100, y: 350 }, data: { style: '科普向', apiType: 'deepseek', apiKey: '', generateStatus: 'idle' } },
       { id: 'record-1', type: 'contentRecord', position: { x: 1100, y: 550 }, data: {} },
     ],
@@ -292,11 +275,10 @@ export const WORKFLOW_TEMPLATES = [
       { id: 'e1-2', source: 'hotspot-1', target: 'keyword-1' },
       { id: 'e2-3', source: 'keyword-1', target: 'wordcloud-1' },
       { id: 'e2-4', source: 'keyword-1', target: 'trend-1' },
-      { id: 'e2-5', source: 'keyword-1', target: 'hotword-1' },
+      { id: 'e2-5', source: 'keyword-1', target: 'topic-1' },
       { id: 'e2-6', source: 'keyword-1', target: 'newsdetail-1' },
-      { id: 'e2-7', source: 'keyword-1', target: 'topic-1' },
-      { id: 'e5-8', source: 'hotword-1', target: 'content-1' },
-      { id: 'e8-9', source: 'content-1', target: 'record-1' },
+      { id: 'e5-7', source: 'topic-1', target: 'content-1' },
+      { id: 'e7-8', source: 'content-1', target: 'record-1' },
     ],
   },
 ];

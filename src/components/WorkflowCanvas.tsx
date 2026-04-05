@@ -145,31 +145,11 @@ function WorkflowCanvas() {
     addNode(newNode);
   }, [addNode]);
 
-  const addHotwordListNode = useCallback(() => {
-    const newNode = {
-      id: getNextNodeId('hotword'),
-      type: 'hotwordList',
-      position: { x: 750, y: 400 },
-      data: {},
-    };
-    addNode(newNode);
-  }, [addNode]);
-
   const addContentGenerateNode = useCallback(() => {
     const newNode = {
       id: getNextNodeId('content'),
       type: 'contentGenerate',
       position: { x: 1100, y: 300 },
-      data: {},
-    };
-    addNode(newNode);
-  }, [addNode]);
-
-  const addTopicRecommendNode = useCallback(() => {
-    const newNode = {
-      id: getNextNodeId('topic'),
-      type: 'topicRecommend',
-      position: { x: 750, y: 300 },
       data: {},
     };
     addNode(newNode);
@@ -303,22 +283,6 @@ function WorkflowCanvas() {
             <div className="text-xs text-gray-500 mt-3 mb-1">内容处理</div>
             <button
               type="button"
-              onClick={addHotwordListNode}
-              className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-violet-50 hover:bg-violet-100 rounded-md transition-colors"
-            >
-              <span>📝</span>
-              <span>热词列表</span>
-            </button>
-            <button
-              type="button"
-              onClick={addTopicRecommendNode}
-              className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-pink-50 hover:bg-pink-100 rounded-md transition-colors"
-            >
-              <span>🎯</span>
-              <span>选题推荐</span>
-            </button>
-            <button
-              type="button"
               onClick={addTopicHotwordNode}
               className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-gradient-to-r from-pink-50 to-violet-50 hover:from-pink-100 hover:to-violet-100 rounded-md transition-colors"
             >
@@ -440,7 +404,7 @@ function WorkflowCanvas() {
 
         {/* AI 全局设置面板 */}
         {showSettings && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
+          <div className="absolute top-12 right-4 z-50">
             <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-72">
               <div className="flex items-center justify-between mb-3">
                 <div className="font-medium text-gray-700">⚙️ AI 全局设置</div>
