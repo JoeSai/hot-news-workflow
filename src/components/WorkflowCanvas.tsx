@@ -287,7 +287,7 @@ function WorkflowCanvas() {
               className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm bg-gradient-to-r from-pink-50 to-violet-50 hover:from-pink-100 hover:to-violet-100 rounded-md transition-colors"
             >
               <span>🎯📝</span>
-              <span>选题热词（合并版）</span>
+              <span>选题热词</span>
             </button>
             <button
               type="button"
