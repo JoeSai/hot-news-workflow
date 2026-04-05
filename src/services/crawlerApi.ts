@@ -171,7 +171,9 @@ export async function saveKeywordTrends(keywords: Keyword[], source: string = 'c
     body: JSON.stringify({ keywords, source }),
   });
   if (!response.ok) throw new Error(`API error: ${response.status}`);
-  return response.json();
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error || '保存趋势失败');
+  return data as { success: boolean; saved: number };
 }
 
 export async function getKeywordTrends(keywords: string[], days: number = 7): Promise<Record<string, TrendDataPoint[]>> {
@@ -286,6 +288,7 @@ export async function getContentStats(): Promise<ContentStats> {
   const response = await fetchWithTimeout(`${API_BASE}/content-records/stats/summary`);
   if (!response.ok) throw new Error(`API error: ${response.status}`);
   const result = await response.json();
+  if (!result.success) throw new Error(result.error || '获取统计失败');
   return result.stats as ContentStats;
 }
 

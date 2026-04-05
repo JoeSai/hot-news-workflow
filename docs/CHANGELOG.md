@@ -10,6 +10,8 @@
 **Bug Fixes:**
 - **v0.18-B2: TopicRecommendNode 增加 source Handle** - 新增右侧输出把手，输出类型写入 `keywords` 字段，打通与下游节点的数据流
 - **UI 修复：AI 设置面板遮挡问题** - 将 AI 设置浮层从顶部居中改为右上角展开，不再遮挡工作流模板展开按钮
+- **B1: saveKeywordTrends 增加 success 校验** - `crawlerApi.ts` 添加 `data.success` 检查，异常时抛出明确错误，避免失败被当作成功
+- **B2: getContentStats 增加 success 校验** - `crawlerApi.ts` 添加 `result.success` 检查，避免后端异常时返回空统计
 
 ---
 
