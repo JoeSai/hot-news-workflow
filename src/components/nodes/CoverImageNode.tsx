@@ -79,7 +79,16 @@ function CoverImageNode({ id, data }: CoverImageNodeProps) {
   const currentColors = colors[colorIndex % colors.length];
 
   const exportAsImage = () => {
-    // 直接用 canvas 绘制，不依赖 DOM 元素
+    // 如果已有 AI 生成图片，直接下载它
+    if (aiImage) {
+      const link = document.createElement('a');
+      link.download = `封面_AI_${Date.now()}.png`;
+      link.href = aiImage;
+      link.click();
+      return;
+    }
+
+    // 否则用 canvas 绘制文字模板
     const canvas = document.createElement('canvas');
     canvas.width = 1080;
     canvas.height = 1440;
@@ -286,7 +295,7 @@ function CoverImageNode({ id, data }: CoverImageNodeProps) {
         {/* 导出 */}
         <button
           onClick={exportAsImage}
-          disabled={!title}
+          disabled={!title && !aiImage}
           className="w-full py-2 bg-rose-500 text-white rounded font-medium text-sm hover:bg-rose-600 disabled:bg-gray-400"
         >
           📥 导出 PNG (1080×1440)
