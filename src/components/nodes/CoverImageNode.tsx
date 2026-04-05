@@ -79,10 +79,7 @@ function CoverImageNode({ id, data }: CoverImageNodeProps) {
   const currentColors = colors[colorIndex % colors.length];
 
   const exportAsImage = () => {
-    const element = document.getElementById('cover-preview');
-    if (!element) return;
-
-    // 简单实现：创建 canvas 导出
+    // 直接用 canvas 绘制，不依赖 DOM 元素
     const canvas = document.createElement('canvas');
     canvas.width = 1080;
     canvas.height = 1440;
@@ -271,7 +268,9 @@ function CoverImageNode({ id, data }: CoverImageNodeProps) {
               </button>
             </div>
           ) : (
-            renderPreview()
+            <div id="cover-preview">
+              {renderPreview()}
+            </div>
           )}
         </div>
 

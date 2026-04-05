@@ -581,12 +581,23 @@ async def generate_content(request: ContentGenerateRequest):
     try:
         # 确定 API Key 来源
         api_key = request.api_key or os.environ.get("DEEPSEEK_API_KEY", "")
-        provider = AI_PROVIDERS.get(request.api_type, AI_PROVIDERS["deepseek"])
+        effective_api_type = request.api_type
+        if not api_key:
+            try:
+                from db import get_global_settings as db_get_settings
+                settings = db_get_settings()
+                api_key = settings.get("api_key") or ""
+                # 如果请求没指定 api_type，用数据库里的 provider
+                if not effective_api_type and settings.get("provider"):
+                    effective_api_type = settings.get("provider")
+            except Exception:
+                pass
+        provider = AI_PROVIDERS.get(effective_api_type, AI_PROVIDERS["deepseek"])
         base_url = request.api_base or provider["base_url"]
         model = provider["model"]
 
         if not api_key:
-            return {"success": False, "error": "请提供 API Key"}
+            return {"success": False, "error": "请先在 AI 设置中配置 API Key"}
 
         # 构建 prompt（v0.17-R3: 优先使用中文翻译）
         def get_display_word(k):
@@ -700,7 +711,15 @@ async def generate_cover_image(request: dict):
         aspect_ratio = request.get("aspect_ratio", "3:4")
         api_key = request.get("api_key") or _os.environ.get("MINIMAX_API_KEY", "") or _os.environ.get("LLM_API_KEY", "")
         if not api_key:
-            return {"success": False, "error": "请提供 API Key"}
+            # 尝试从数据库设置读取
+            try:
+                from db import get_global_settings as db_get_settings
+                settings = db_get_settings()
+                api_key = settings.get("api_key") or ""
+            except Exception:
+                pass
+        if not api_key:
+            return {"success": False, "error": "请先在 AI 设置中配置 API Key"}
 
         url = "https://api.minimaxi.com/v1/image_generation"
         headers = {
@@ -732,6 +751,13 @@ async def generate_report_summary(request: dict):
         period = request.get("period", "本周")
         api_type = request.get("api_type", "deepseek")
         api_key = request.get("api_key") or os.environ.get("DEEPSEEK_API_KEY", "") or os.environ.get("LLM_API_KEY", "")
+        if not api_key:
+            try:
+                from db import get_global_settings as db_get_settings
+                settings = db_get_settings()
+                api_key = settings.get("api_key") or ""
+            except Exception:
+                pass
         provider = AI_PROVIDERS.get(api_type, AI_PROVIDERS["deepseek"])
         base_url = request.get("api_base") or provider["base_url"]
         model = provider["model"]

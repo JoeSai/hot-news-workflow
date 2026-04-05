@@ -12,6 +12,9 @@
 - **UI 修复：AI 设置面板遮挡问题** - 将 AI 设置浮层从顶部居中改为右上角展开，不再遮挡工作流模板展开按钮
 - **B1: saveKeywordTrends 增加 success 校验** - `crawlerApi.ts` 添加 `data.success` 检查，异常时抛出明确错误，避免失败被当作成功
 - **B2: getContentStats 增加 success 校验** - `crawlerApi.ts` 添加 `result.success` 检查，避免后端异常时返回空统计
+- **CoverImageNode: 导出 PNG 无反应** - `exportAsImage` 不再依赖 DOM 元素查找，直接用 canvas 绘制
+- **CoverImageNode: AI 生成失败无提示** - 新增 `aiError` 状态，API 报错时显示具体原因
+- **后端 API 数据库 fallback** - `/api/cover/generate`、`/api/generate`、`/api/report/summary` 均支持从数据库读取 API Key，不再强依赖环境变量
 
 ---
 
