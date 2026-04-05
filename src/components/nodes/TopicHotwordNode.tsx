@@ -297,6 +297,17 @@ function TopicHotwordNode({ id, data }: TopicHotwordNodeProps) {
             </button>
           </div>
         )}
+        {/* 空状态：已点开但无推荐 */}
+        {showRecommendations && recommendations.length === 0 && hasInput && (
+          <div className="border border-pink-200 rounded-lg p-3 bg-pink-50/50 text-center text-xs text-pink-500">
+            调整阈值或上游关键词不足，暂无推荐
+          </div>
+        )}
+        {showRecommendations && !hasInput && (
+          <div className="border border-pink-200 rounded-lg p-3 bg-pink-50/50 text-center text-xs text-gray-400">
+            ← 连接关键词提取节点后才可查看评分
+          </div>
+        )}
 
         {/* 热词列表 */}
         {hasInput ? (
