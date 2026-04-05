@@ -194,3 +194,35 @@ schedule.every().day.at("07:30").do(job)
 
 ### 结论
 技术可行，核心是数据模型增加 `channel` 字段 + prompt 模板变量化。多赛道扩展比多平台扩展更简单，是 v0.20 后最合理的扩展方向。
+
+---
+
+## 7. 定时抓取调研补充（2026-04-05）
+
+**调研结论：**
+
+| 方案 | 推荐度 | 说明 |
+|------|--------|------|
+| macOS launchd | ⭐⭐⭐ | 原生方案，可靠性最高，plist 配置后永久生效 |
+| 后端 `schedule` 库 | ⭐⭐ | 最简实现，`python3 -m server.main` 常驻进程时直接用，但进程崩则任务停 |
+| APScheduler | ⭐⭐ | 功能更全，支持 cron 表达式，适合长期运行的服务 |
+
+**推荐：launchd + 后端 schedule 双保险**
+- `schedule` 内嵌到 `server/main.py`，每早 7:30 自动触发爬虫 + 关键词提取，结果写入 DB
+- 用户打开工具时当日热点已就绪
+- 备用：launchd plist 作为进程保活兜底
+
+**实现要点：**
+```python
+import schedule
+def morning_crawl():
+    # 调用爬虫 + 关键词提取，结果持久化到 SQLite
+    pass
+schedule.every().day.at("07:30").do(morning_crawl)
+# 在 uvicorn 启动线程中运行 schedule.run_continuously()
+```
+
+**下一个可能需求：定时抓取 + 推送通知（macOS 通知中心）**
+
+*最后更新：2026-04-05（定时抓取调研补充）*
+
