@@ -24,6 +24,7 @@ function CoverImageNode({ id, data }: CoverImageNodeProps) {
   const [colorIndex, setColorIndex] = useState<number>(0);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiImage, setAiImage] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   // v0.19-R2: 追踪用户是否手动编辑过标题，避免覆盖
   const userEditedTitle = useRef(!!(data.coverTitle as string));
 
@@ -53,6 +54,7 @@ function CoverImageNode({ id, data }: CoverImageNodeProps) {
   const handleAiGenerate = async () => {
     if (!title) return;
     setAiGenerating(true);
+    setAiError(null);
     try {
       const settings = await getGlobalSettings();
       const prompt = `AI科技感封面图，标题：${title}${subtitle ? '，副标题：' + subtitle : ''}，小红书风格，高清`;
@@ -60,7 +62,7 @@ function CoverImageNode({ id, data }: CoverImageNodeProps) {
       const base64 = await generateCoverImage(prompt, "3:4", apiKey);
       setAiImage(`data:image/jpeg;base64,${base64}`);
     } catch (e) {
-      console.error('AI生成失败', e);
+      setAiError(e instanceof Error ? e.message : '生成失败');
     } finally {
       setAiGenerating(false);
     }
@@ -291,9 +293,14 @@ function CoverImageNode({ id, data }: CoverImageNodeProps) {
           📥 导出 PNG (1080×1440)
         </button>
 
-        {inputKeywords.length === 0 && (
+        {aiError && (
+          <div className="text-xs text-red-600 text-center bg-red-50 rounded p-2">
+            生成失败：{aiError}
+          </div>
+        )}
+        {inputKeywords.length === 0 && !title && (
           <div className="text-xs text-orange-500 text-center">
-            ← 连接选题推荐或热词列表自动填入标题
+            ← 连接选题热词节点自动填入标题
           </div>
         )}
       </div>
