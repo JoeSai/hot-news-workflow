@@ -4,20 +4,7 @@
 
 ## 待修 Bug（仅保留未闭环）
 
-对应需求：[PRODUCT-REQUIREMENTS.md v0.18](PRODUCT-REQUIREMENTS.md#v018--选题推荐重构)
-
-### 🔴 v0.18-B2: 选题推荐输出是死胡同
-
-**状态：🟠 部分修复（未完全闭环）**
-
-**文件：** `src/components/nodes/TopicRecommendNode.tsx`
-
-**问题：** 已新增 `selectedKeywords` 写回，但节点仍只有 `target` 输入把手、没有 `source` 输出把手，无法在画布上从该节点直接连到下游节点；且 `outputType: 'keywords'` 时并未产出 `keywords` 字段，通用 `getInputData(..., 'keywords')` 仍读不到该节点输出。
-
-**建议修复：**
-- 在 `TopicRecommendNode` 增加 `source` Handle，允许连线输出
-- 统一输出字段：要么写入 `keywords`，要么将下游消费统一切换为 `selectedKeywords`
-- 若产品方向是“与热词列表合并”，则应在组件层移除独立节点并迁移其能力，避免双节点并存
+（暂无）
 
 ---
 
@@ -46,6 +33,7 @@
 | v0.17-B5 | is_valid_keyphrase 行尾正则错误 | v0.17 |
 | v0.18-B1 | 选题推荐评分区分度不足 | v0.18 |
 | v0.18-B3 | topicRecommend 未纳入 runAll | v0.18 |
+| v0.18-B2 | 选题推荐输出是死胡同 | v0.18 |
 | v0.18-B4 | CoverImage 忽略上游关键词 | v0.18 |
 
 ---

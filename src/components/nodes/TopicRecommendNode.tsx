@@ -128,6 +128,7 @@ function TopicRecommendNode({ id }: TopicRecommendNodeProps) {
     updateNodeData(id, {
       recommendations,
       selectedKeywords: selected,
+      keywords: selected,
       outputType: 'keywords',
     });
   };
@@ -151,6 +152,7 @@ function TopicRecommendNode({ id }: TopicRecommendNodeProps) {
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-200 w-80">
       <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} id="keywords" />
 
       {/* Header */}
       <div className="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-4 py-2 rounded-t-lg">
