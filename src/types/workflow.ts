@@ -18,6 +18,7 @@ export interface NewsItem {
 // 关键词
 export interface Keyword {
   word: string;
+  wordCn?: string;       // 英文关键词的中文翻译（v0.17-R3）
   weight: number;
   type?: 'word' | 'phrase';
   sourceNews?: string[];  // 该关键词来源的新闻标题

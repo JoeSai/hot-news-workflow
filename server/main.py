@@ -253,6 +253,75 @@ class KeywordRequest(BaseModel):
     method: str = "phrase"  # tfidf / textrank / phrase
 
 
+@app.post("/api/keywords", response_model=dict)
+async def extract_keywords_api(request: KeywordRequest):
+    """
+    从新闻列表中提取关键词/热词（v0.17-R3: 英文关键词翻译为中文）
+    """
+    try:
+        # 提取关键词
+        keywords = extract_keywords(request.news, request.top_k, request.method)
+
+        # v0.17-R3: 找出纯英文关键词并翻译为中文
+        english_words = [kw for kw in keywords if not bool(re.search(r'[\u4e00-\u9fff]', kw["word"]))]
+
+        if english_words:
+            # 批量翻译：把英文关键词拼成列表，让 LLM 一次性翻译
+            en_list = [kw["word"] for kw in english_words]
+            prompt = f"""请将以下英文关键词翻译为中文（仅输出中文翻译，不要解释）：
+
+{', '.join(en_list)}
+
+请按以下 JSON 格式返回（只输出 JSON，不要任何其他内容）：
+{{
+  "translations": {{
+    "word1": "中文翻译1",
+    "word2": "中文翻译2"
+  }}
+}}"""
+
+            # 复用 generate_content 的 provider 逻辑读取设置
+            try:
+                from db import get_global_settings
+                settings = get_global_settings()
+            except Exception:
+                settings = {}
+
+            provider_name = settings.get("provider", "deepseek")
+            api_key = settings.get("api_key") or os.environ.get("DEEPSEEK_API_KEY", "")
+            provider = AI_PROVIDERS.get(provider_name, AI_PROVIDERS["deepseek"])
+            base_url = settings.get("api_base") or provider["base_url"]
+            model = settings.get("model") or provider.get("model", "deepseek-chat")
+
+            if api_key:
+                result = call_openai_compatible_api(api_key, base_url, model, prompt)
+                if "error" not in result:
+                    content = result.get("content", "")
+                    # 提取 JSON
+                    import json
+                    try:
+                        import re as re_module
+                        json_match = re_module.search(r'\{[\s\S]*\}', content)
+                        if json_match:
+                            trans_data = json.loads(json_match.group())
+                            translations = trans_data.get("translations", {})
+                            # 回填翻译结果到关键词列表
+                            en_word_set = set(en_list)
+                            for kw in keywords:
+                                if kw["word"] in en_word_set and kw["word"] in translations:
+                                    kw["word_cn"] = translations[kw["word"]]
+                    except Exception:
+                        pass  # 翻译解析失败不影响主流程
+            # 无 API Key 时跳过翻译，保留原文
+
+        return {
+            "success": True,
+            "keywords": keywords,
+            "count": len(keywords),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 class ContentGenerateRequest(BaseModel):
     keywords: List[dict]  # 选中的热词（包含 source_news）
     news_titles: List[str] = []  # 相关新闻标题（可选，用于参考）
@@ -519,8 +588,12 @@ async def generate_content(request: ContentGenerateRequest):
         if not api_key:
             return {"success": False, "error": "请提供 API Key"}
 
-        # 构建 prompt
-        keywords_str = "、".join([k.get("word", k) if isinstance(k, dict) else str(k) for k in request.keywords[:10]])
+        # 构建 prompt（v0.17-R3: 优先使用中文翻译）
+        def get_display_word(k):
+            if isinstance(k, dict):
+                return k.get("word_cn") or k.get("word", "")
+            return str(k)
+        keywords_str = "、".join([get_display_word(k) for k in request.keywords[:10]])
         style = request.style or "科普向"
 
         news_context_block = ""
@@ -559,7 +632,7 @@ async def generate_content(request: ContentGenerateRequest):
         # 保存草稿到数据库
         try:
             from db import save_draft as db_save_draft
-            keywords_list = [k.get("word", k) if isinstance(k, dict) else str(k) for k in request.keywords]
+            keywords_list = [get_display_word(k) for k in request.keywords]
             draft_id = db_save_draft(
                 keywords=keywords_list,
                 titles=parsed.get("titles", []),

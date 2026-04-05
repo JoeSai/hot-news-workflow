@@ -2,45 +2,34 @@
 
 ---
 
-## 待修 Bug（仅保留未闭环）
+## 未修复 Bug
 
 （暂无）
 
 ---
 
-## 已修复
+## 已验证修复
 
-| 编号 | 问题 | 修复版本 |
-|------|------|----------|
-| v0.11-B1 | SQLite 并发安全 | v0.11 |
-| v0.11-B2 | 草稿双写 | v0.11 |
-| v0.11-B3 | Run All 交互节点自动取 TOP 5 | v0.11 |
-| v0.11-B4 | Store 无用字段删除 | v0.11 |
-| v0.12-B1 | fetchWithTimeout 全覆盖 | v0.12 |
-| v0.13-B1 | 新节点加入面板 | v0.13 |
-| v0.13-B2 | 后端输入验证 | v0.13 |
-| v0.13-B3 | 删除 500ms setTimeout | v0.13 |
-| v0.13-B4 | TrendNode useEffect 依赖 | v0.13 |
-| v0.13-B5 | CORS 收紧 | v0.13 |
-| v0.14-B1 | weibo.py lxml import | v0.14 |
-| v0.14-B2 | runAll stale state | v0.14 |
-| v0.14-B3 | getNextNodeId 闭包 | v0.14 |
-| v0.14-B4 | 澎湃 XPath 脆弱 | v0.14 |
-| v0.17-B1 | 关键词去重截断输出 | v0.17 |
-| v0.17-B2 | 英文关键词走中文管道 | v0.17 |
-| v0.17-B3 | preprocess 标点正则损坏 | v0.17 |
-| v0.17-B4 | runAll 读不到上游 selectedKeywords | v0.17 |
-| v0.17-B5 | is_valid_keyphrase 行尾正则错误 | v0.17 |
-| v0.18-B1 | 选题推荐评分区分度不足 | v0.18 |
-| v0.18-B3 | topicRecommend 未纳入 runAll | v0.18 |
-| v0.18-B2 | 选题推荐输出是死胡同 | v0.18 |
-| v0.18-B4 | CoverImage 忽略上游关键词 | v0.18 |
+| 编号 | 验证结论 | 状态 |
+|------|----------|------|
+| B1 | `saveKeywordTrends` 已增加 `data.success` 校验，失败时抛出明确错误 | ✅ |
+| B2 | `getContentStats` 已增加 `result.success` 校验，避免后端异常时返回空统计 | ✅ |
+| v0.18-B2 | `TopicRecommendNode` 已新增 `source` Handle，且输出 `keywords` 字段，数据链可连到下游 | ✅ |
+| v0.21-R1 | 已新增 `TopicHotwordNode`，模板已迁移到合并节点，节点面板不再暴露旧「选题推荐」入口 | ✅ |
+| UI 修复 | AI 设置面板已改为右上角弹层，不再默认遮挡模板按钮 | ✅ |
+| v0.17-R3 | `/api/keywords` 新增英文关键词批量 LLM 翻译，`Keyword` 类型增加 `wordCn` 字段，内容生成时优先使用中文翻译 | ✅ |
 
 ---
 
-## 架构备注
+## 架构建议
 
-- CORS 收紧、输入验证、请求超时全覆盖
-- SQLite 写锁 + context manager
-- 草稿存储统一后端 API
-- 15 个爬虫全部注册
+- 统一后端响应协议：所有 API 固定返回 `success` 字段，避免前端分支处理不一致。
+- `runAll` 交互节点自动选词逻辑建议抽为通用函数，减少 `hotwordList/topicRecommend/topicHotword` 三处重复。
+- 逐步下线 `TopicRecommendNode` 组件与类型注册，避免双实现长期并存造成维护分叉。
+
+---
+
+## 验收记录
+
+- 验收基准：`docs/CHANGELOG.md` 最新版本 `v0.21`
+- 构建验证：`pnpm build` 通过（TypeScript + Vite）

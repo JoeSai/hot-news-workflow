@@ -26,6 +26,9 @@
 
 ## v0.17
 
+**Features (v0.17-R3):**
+- **v0.17-R3: 英文关键词翻译为中文** - `/api/keywords` 端点新增 LLM 批量翻译，纯英文关键词自动翻译为中文；内容生成时优先使用中文翻译作为 prompt 关键词；无 API Key 时优雅降级保留英文原文
+
 **Bug Fixes (P2.4.5):**
 - **P2.4.5a: 去重截断** - `seen` 字典存储完整词 `full_word`，去重 key 仍用前3字符，避免 "Mysterious" → "Mys" 输出
 - **P2.4.5b: 英文 NLP 管道** - 新增 `_is_chinese()` 语言检测；中文用 jieba+YAKE(zh)，英文直接用 YAKE(en)，避免 jieba 切碎英文

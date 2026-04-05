@@ -94,6 +94,7 @@ export async function extractKeywords(
   // 转换 snake_case -> camelCase
   return (data.keywords as Array<Record<string, unknown>>).map(k => ({
     word: k.word as string,
+    wordCn: k.word_cn as string | undefined,
     weight: k.weight as number,
     type: k.type as 'word' | 'phrase' | undefined,
     sourceNews: k.source_news as string[] | undefined,
