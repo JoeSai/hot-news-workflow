@@ -651,6 +651,45 @@ async def generate_cover_image(request: dict):
         return {"success": False, "error": str(e)}
 
 
+@app.post("/api/report/summary", response_model=dict)
+async def generate_report_summary(request: dict):
+    """AI 生成运营周报/月报文字总结"""
+    try:
+        report_data = request.get("report_data", {})
+        period = request.get("period", "本周")
+        api_type = request.get("api_type", "deepseek")
+        api_key = request.get("api_key") or os.environ.get("DEEPSEEK_API_KEY", "") or os.environ.get("LLM_API_KEY", "")
+        provider = AI_PROVIDERS.get(api_type, AI_PROVIDERS["deepseek"])
+        base_url = request.get("api_base") or provider["base_url"]
+        model = provider["model"]
+
+        if not api_key:
+            return {"success": False, "error": "请先在设置中配置 API Key"}
+
+        top_post_title = report_data.get("topPost", {}).get("draft_title") or report_data.get("topPost", {}).get("platform", "暂无")
+        prompt = f"""你是一个专业的小红书运营分析师。请根据以下数据生成一段简洁的运营总结（100字以内，用中文输出）：
+
+周期：{period}
+发布笔记数：{report_data.get('count', 0)}
+总点赞：{report_data.get('totalLikes', 0)}
+总收藏：{report_data.get('totalCollects', 0)}
+总评论：{report_data.get('totalComments', 0)}
+总分享：{report_data.get('totalShares', 0)}
+总互动：{report_data.get('totalEngagement', 0)}
+热门类型：{report_data.get('topStyle', '未知')}
+最佳表现：{top_post_title}
+
+请直接输出一段总结，不要用列表格式。"""
+
+        result = call_openai_compatible_api(api_key, base_url, model, prompt)
+        if "error" in result:
+            return {"success": False, "error": result["error"]}
+        summary = result.get("content", "").strip()
+        return {"success": True, "summary": summary}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def parse_draft_structured(draft: str) -> dict:
     """解析草稿文本为结构化数据"""
     if not draft:

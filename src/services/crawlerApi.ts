@@ -265,6 +265,23 @@ export async function generateCoverImage(prompt: string, aspectRatio: string = "
   return data.image_base64 as string;
 }
 
+// ==================== 运营报告 API ====================
+
+export async function generateReportSummary(reportData: Record<string, unknown>, period: string, apiKey?: string, apiType?: string): Promise<string> {
+  const payload: Record<string, unknown> = { report_data: reportData, period };
+  if (apiKey) payload.api_key = apiKey;
+  if (apiType) payload.api_type = apiType;
+  const response = await fetchWithTimeout(`${API_BASE}/report/summary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }, 60000);
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error || '生成失败');
+  return data.summary as string;
+}
+
 export async function getContentStats(): Promise<ContentStats> {
   const response = await fetchWithTimeout(`${API_BASE}/content-records/stats/summary`);
   if (!response.ok) throw new Error(`API error: ${response.status}`);

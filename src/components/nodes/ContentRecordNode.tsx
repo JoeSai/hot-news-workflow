@@ -7,6 +7,8 @@ import {
   saveContentRecord,
   deleteContentRecord,
   getContentStats,
+  generateReportSummary,
+  getGlobalSettings,
   type ContentRecord,
   type ContentStats,
 } from '../../services/crawlerApi';
@@ -23,6 +25,8 @@ function ContentRecordNode(_props: ContentRecordNodeProps) {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
 
   // 表单状态
   const [draftId, setDraftId] = useState<string>('');
@@ -411,6 +415,36 @@ function ContentRecordNode(_props: ContentRecordNodeProps) {
               <div className="border-t border-indigo-100 pt-2 space-y-1">
                 <div className="flex justify-between"><span className="text-gray-500">最佳表现</span><span className="text-gray-700 font-medium truncate ml-2">{REPORT.topPost?.draft_title || REPORT.topPost?.platform}</span><span className="text-pink-600 font-bold ml-2">{(REPORT.topPost?.likes || 0) + (REPORT.topPost?.collects || 0)}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">热门类型</span><span className="text-gray-700 font-medium">{REPORT.topStyle}</span><span className="text-gray-400 ml-2">({(REPORT.styleCount || {})[REPORT.topStyle] || 0}篇)</span></div>
+              </div>
+              {/* v0.20-R5: AI 文字总结 */}
+              <div className="border-t border-indigo-100 pt-2">
+                {aiSummary ? (
+                  <div className="bg-white rounded p-2 text-xs text-gray-700 italic">💬 {aiSummary}</div>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      setGeneratingSummary(true);
+                      try {
+                        const settings = await getGlobalSettings();
+                        const summary = await generateReportSummary(
+                          REPORT,
+                          REPORT.period || '本周',
+                          settings.api_key ?? undefined,
+                          settings.provider || 'deepseek',
+                        );
+                        setAiSummary(summary);
+                      } catch (e) {
+                        console.error('AI总结生成失败', e);
+                      } finally {
+                        setGeneratingSummary(false);
+                      }
+                    }}
+                    disabled={generatingSummary}
+                    className="w-full py-1 bg-indigo-100 text-indigo-600 rounded text-xs hover:bg-indigo-200 disabled:opacity-50"
+                  >
+                    {generatingSummary ? '🤖 AI 生成中...' : '🤖 AI 生成文字总结'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
